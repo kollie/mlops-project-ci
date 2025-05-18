@@ -49,7 +49,7 @@ This project implements a complete machine learning pipeline with the following 
 1. Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/kollie/mlops-project-ci.git
 cd mlops_project
 ```
 
