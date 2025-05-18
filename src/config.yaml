@@ -1,0 +1,57 @@
+# Data paths
+data:
+  raw_data_path: "data/raw"
+  processed_data_path: "data/processed"
+  model_path: "models"
+  test_data_path: "data/test"
+
+# Database configuration
+database:
+  host: "localhost"
+  port: 5432
+  database: "mlops_db"
+  user: "user"
+  password: "password"
+
+# Model parameters
+model:
+  name: "random_forest"
+  random_state: 42
+  test_size: 0.2
+  parameters:
+    n_estimators: 100
+    max_depth: 10
+    min_samples_split: 2
+    min_samples_leaf: 1
+
+# Feature engineering
+features:
+  categorical_columns:
+    - "category"
+    - "location"
+  numerical_columns:
+    - "age"
+    - "income"
+    - "score"
+  target_column: "target"
+
+# Preprocessing
+preprocessing:
+  scaling_method: "standard"
+  encoding_method: "one_hot"
+  handle_missing: "mean"
+
+# Evaluation metrics
+evaluation:
+  metrics:
+    - "accuracy"
+    - "precision"
+    - "recall"
+    - "f1"
+  cv_folds: 5
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/mlops.log"
