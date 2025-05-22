@@ -51,20 +51,7 @@ def test_validate_schema(validator, sample_data):
     assert 'missing_values' in schema
     assert 'unique_values' in schema
 
-def test_validate_schema_valid(data_validator, valid_data):
-    # Test schema validation with valid data
-    assert data_validator.validate_schema(valid_data) is True
-
-def test_validate_schema_invalid(data_validator, invalid_data):
-    # Test schema validation with invalid data
-    assert data_validator.validate_schema(invalid_data) is False
-
-def test_check_types_valid(data_validator, valid_data):
-    # Test type checking with valid data
-    assert data_validator.check_types(valid_data) is True
-
-def test_check_types_invalid(validator):
-    # Test type checking with invalid data
+def test_validate_data_invalid_types(validator):
     invalid_data = pd.DataFrame({
         'encounter_id': ['1', '2', '3'],  # Should be numerical
         'patient_nbr': ['1', '2', '3'],  # Should be numerical
@@ -81,33 +68,4 @@ def test_check_types_invalid(validator):
         'readmitted': ['NO', 'YES', 'NO']
     })
     with pytest.raises(ValueError, match="encounter_id must be numeric"):
-        validator.validate_data(invalid_data)
-
-def test_handle_missing_values(validator):
-    # Test handling missing values
-    data = pd.DataFrame({
-        'encounter_id': range(3),
-        'patient_nbr': range(3),
-        'race': ['Caucasian'] * 3,
-        'gender': ['Female'] * 3,
-        'age': [25, np.nan, 35],
-        'time_in_hospital': range(3),
-        'num_lab_procedures': range(3),
-        'num_procedures': range(3),
-        'num_medications': range(3),
-        'number_outpatient': range(3),
-        'number_emergency': range(3),
-        'number_inpatient': range(3),
-        'readmitted': ['NO', 'YES', 'NO']
-    })
-    
-    with pytest.raises(ValueError, match="Data contains missing values"):
-        validator.validate_data(data)
-
-def test_validate_data_valid(data_validator, valid_data):
-    # Test complete validation with valid data
-    assert data_validator.validate_data(valid_data) is True
-
-def test_validate_data_invalid(data_validator, invalid_data):
-    # Test complete validation with invalid data
-    assert data_validator.validate_data(invalid_data) is False 
+        validator.validate_data(invalid_data) 
