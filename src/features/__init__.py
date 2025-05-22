@@ -1,6 +1,5 @@
 """
-Feature engineering module for the diabetic readmission prediction project.
-This module handles feature creation, selection, and transformation.
+Feature engineering module for the MLOps project.
 """
 
 from .feature_engineering import FeatureEngineer
