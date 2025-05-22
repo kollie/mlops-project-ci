@@ -44,6 +44,8 @@ features:
       "[80-90)",
       "[90-100)",
     ]
+  los_bins: [0, 3, 7, 14, 30]
+  los_labels: ["short", "medium", "long", "very_long"]
   n_features_to_select: 10
   categorical_features:
     - race

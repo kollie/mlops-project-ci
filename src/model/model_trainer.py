@@ -5,17 +5,19 @@ Model training module for the MLOps project.
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
+from src.preprocessing.preprocessor import Preprocessor
 import joblib
 import logging
 
 class ModelTrainer:
-    def __init__(self):
-        self.model = None
-        self.model_params = {
-            'n_estimators': 100,
-            'max_depth': 10,
-            'random_state': 42
-        }
+    def __init__(self, config_path: str = "src/config.yaml"):
+        """Initialize the model trainer."""
+        self.model = RandomForestClassifier(
+            n_estimators=100,
+            max_depth=10,
+            random_state=42
+        )
+        self.preprocessor = Preprocessor(config_path)
         self.logger = logging.getLogger(__name__)
 
     def train(self, X: pd.DataFrame, y: pd.Series) -> None:
@@ -42,13 +44,15 @@ class ModelTrainer:
         """Make predictions."""
         if self.model is None:
             raise ValueError("Model not trained yet")
-        return self.model.predict(X)
+        X_processed = self.preprocessor.transform(X)
+        return self.model.predict(X_processed)
 
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """Get prediction probabilities."""
         if self.model is None:
             raise ValueError("Model not trained yet")
-        return self.model.predict_proba(X)
+        X_processed = self.preprocessor.transform(X)
+        return self.model.predict_proba(X_processed)
 
     def save_model(self, path: str) -> None:
         """Save the trained model."""
