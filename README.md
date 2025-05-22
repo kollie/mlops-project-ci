@@ -1,174 +1,108 @@
-# MLOps Group Project
+# Diabetic Readmission Prediction MLOps Project
 
-A comprehensive MLOps project implementing a complete machine learning pipeline with modular design and essential components for a production-ready ML system.
-
-## Project Overview
-
-This project implements a complete machine learning pipeline with the following components:
-
-- Data Loading and Validation
-- Data Preprocessing
-- Feature Engineering
-- Model Training
-- Model Evaluation
-- Inference Pipeline
-- Automated Testing
-- CI/CD Integration
+This project implements a machine learning pipeline for predicting diabetic patient readmission using MLOps best practices.
 
 ## Project Structure
 
 ```
 .
-├── src/
-│   ├── __init__.py
-│   ├── main.py              # Main pipeline script
-│   ├── data_loader.py       # Data loading utilities
-│   ├── data_validation.py   # Data validation
-│   ├── preprocessing.py     # Data preprocessing
-│   ├── features.py          # Feature engineering
-│   ├── model.py            # Model training
-│   ├── evaluation.py       # Model evaluation
-│   ├── inference.py        # Inference pipeline
-│   ├── utils.py            # Utility functions
-│   └── config.yaml         # Configuration file
 ├── data/
-│   ├── raw/                # Raw data
-│   └── test/               # Test data
-├── tests/                  # Test files
-├── requirements.txt        # Project dependencies
-└── README.md              # Project documentation
+│   ├── raw/
+│   │   └── diabetic_readmission_data.csv
+│   ├── processed/
+│   └── test/
+├── src/
+│   ├── data_loader/
+│   │   ├── __init__.py
+│   │   └── data_loader.py
+│   ├── preprocessing/
+│   │   ├── __init__.py
+│   │   └── preprocessor.py
+│   ├── validation/
+│   │   ├── __init__.py
+│   │   └── validator.py
+│   ├── model/
+│   │   ├── __init__.py
+│   │   └── train.py
+│   ├── evaluation/
+│   │   ├── __init__.py
+│   │   └── metrics.py
+│   ├── inference/
+│   │   ├── __init__.py
+│   │   └── predict.py
+│   ├── config.yaml
+│   └── main.py
+├── models/
+├── logs/
+├── requirements.txt
+└── README.md
 ```
 
-## Prerequisites
+## Setup
 
-- Python 3.9 or higher
-- pip (Python package installer)
-
-## Installation
-
-1. Clone the repository:
+1. Create a virtual environment:
 
 ```bash
-git clone https://github.com/kollie/mlops-project-ci.git
-cd mlops_project
-```
-
-2. Create and activate a virtual environment:
-
-```bash
-
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Install dependencies:
+2. Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Configuration
+3. Create necessary directories:
 
-The project uses a `config.yaml` file for configuration. Key configuration parameters include:
+```bash
+mkdir -p data/{raw,processed,test} models logs
+```
 
-- Data paths
-- Model parameters
-- Feature engineering settings
-- Preprocessing options
-- Evaluation metrics
+4. Place your dataset in `data/raw/diabetic_readmission_data.csv`
 
-## Usage
+## Running the Pipeline
 
-### Running the Complete Pipeline
-
-1. Using local data:
+To run the complete ML pipeline:
 
 ```bash
 python src/main.py
 ```
 
-2. Using data from URLs:
+The pipeline will:
 
-```python
-# In src/main.py, set:
-use_url_data = True
-```
+1. Load and validate the data
+2. Split and preprocess the data
+3. Train the model
+4. Evaluate the model
+5. Make predictions
 
-### Running Individual Components
+## Output
 
-1. Data Loading:
+The pipeline generates several outputs:
 
-```python
-from src import DataLoader
+- Processed data in `data/processed/`
+- Trained model in `models/`
+- Evaluation metrics in `validation_metrics.csv` and `test_metrics.csv`
+- Predictions in `predictions.csv`
+- Logs in `logs/pipeline.log`
 
-# Load from local file
-data_loader = DataLoader()
-data = data_loader.load_csv("data/raw/train_data.csv")
+## MLflow Tracking
 
-# Load from URL
-data = data_loader.load_api("https://example.com/data.csv")
-```
-
-2. Model Training:
-
-```python
-from src import ModelTrainer
-
-trainer = ModelTrainer()
-metrics = trainer.train(X, y)
-```
-
-3. Inference:
-
-```python
-from src import InferencePipeline
-
-pipeline = InferencePipeline()
-predictions = pipeline.predict("data/test/test_data.csv")
-```
-
-### Running Tests
+The project uses MLflow for experiment tracking. To view the MLflow UI:
 
 ```bash
-# Run all tests
-pytest tests/
-
-# Run tests with coverage
-pytest tests/ --cov=src/
+mlflow ui
 ```
 
-## Data Format
+Then open http://localhost:5000 in your browser.
 
-The project expects data in CSV format with the following structure:
+## Configuration
 
-### Training Data
+The pipeline configuration can be modified in `src/config.yaml`. Key parameters include:
 
-```
-age,income,category,location,score,target
-25,50000,A,NY,85,0
-30,60000,B,CA,90,1
-...
-```
-
-### Test Data
-
-```
-age,income,category,location,score
-26,51000,A,NY,86
-31,61000,B,CA,89
-...
-```
-
-## Features
-
-- Modular design for easy maintenance and extension
-- Comprehensive error handling and logging
-- Automated testing with pytest
-- CI/CD integration with GitHub Actions
-- Support for both local and URL-based data loading
-- Configurable pipeline components
-- Detailed logging and metrics reporting
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+- Data paths
+- Model parameters
+- Feature engineering settings
+- Evaluation metrics
+- Logging configuration
