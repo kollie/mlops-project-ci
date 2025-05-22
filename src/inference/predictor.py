@@ -11,12 +11,15 @@ import yaml
 from pathlib import Path
 
 class Predictor:
-    def __init__(self, model_path: str = "models/model.joblib", config_path: str = "src/config.yaml"):
+    def __init__(self, model_path: str = "models/model.joblib", config_path: str = "src/config.yaml", load_model: bool = True):
         """Initialize the predictor."""
         self.config = self._load_config(config_path)
         self._setup_logging()
-        self.model = self._load_model(model_path)
         self.preprocessor = Preprocessor(config_path)
+        if load_model:
+            self.model = self._load_model(model_path)
+        else:
+            self.model = None
         
     def _load_config(self, config_path: str) -> dict:
         """Load configuration from yaml file."""
@@ -56,6 +59,9 @@ class Predictor:
     def predict(self, data: pd.DataFrame) -> np.ndarray:
         """Make predictions."""
         try:
+            if self.model is None:
+                raise ValueError("Model not loaded")
+                
             # Validate data
             self._validate_data(data)
             
@@ -74,6 +80,9 @@ class Predictor:
     def predict_proba(self, data: pd.DataFrame) -> np.ndarray:
         """Get prediction probabilities."""
         try:
+            if self.model is None:
+                raise ValueError("Model not loaded")
+                
             # Validate data
             self._validate_data(data)
             

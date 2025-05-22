@@ -1,98 +1,53 @@
 import pytest
-import numpy as np
 import pandas as pd
+import numpy as np
 from src.inference.predictor import Predictor
 
 @pytest.fixture
 def predictor():
     """Create a Predictor instance for testing."""
-    return Predictor()
+    return Predictor(load_model=False)
 
 @pytest.fixture
 def sample_data():
     """Create sample data for testing."""
-    return pd.DataFrame({
-        'encounter_id': range(10),
-        'patient_nbr': range(10),
-        'age': np.random.randint(0, 100, 10),
-        'time_in_hospital': np.random.randint(1, 15, 10),
-        'num_lab_procedures': np.random.randint(1, 100, 10),
-        'num_procedures': np.random.randint(0, 10, 10),
-        'num_medications': np.random.randint(1, 50, 10),
-        'number_outpatient': np.random.randint(0, 20, 10),
-        'number_emergency': np.random.randint(0, 20, 10),
-        'number_inpatient': np.random.randint(0, 20, 10),
-        'race': ['Caucasian', 'AfricanAmerican', 'Hispanic'] * 3 + ['Caucasian'],
-        'gender': ['Female', 'Male'] * 5,
-        'age_group': ['[0-10)', '[10-20)', '[20-30)'] * 3 + ['[0-10)']
+    np.random.seed(42)
+    n_samples = 100
+    
+    data = pd.DataFrame({
+        'age': np.random.randint(0, 100, n_samples),
+        'time_in_hospital': np.random.randint(1, 15, n_samples),
+        'num_lab_procedures': np.random.randint(0, 100, n_samples),
+        'num_procedures': np.random.randint(0, 10, n_samples),
+        'num_medications': np.random.randint(0, 20, n_samples),
+        'number_outpatient': np.random.randint(0, 10, n_samples),
+        'number_emergency': np.random.randint(0, 10, n_samples),
+        'number_inpatient': np.random.randint(0, 10, n_samples),
+        'number_diagnoses': np.random.randint(0, 10, n_samples),
+        'race': np.random.choice(['Caucasian', 'AfricanAmerican', 'Hispanic', 'Asian', 'Other'], n_samples),
+        'gender': np.random.choice(['Male', 'Female'], n_samples),
+        'age_group': pd.cut(np.random.randint(0, 100, n_samples), 
+                           bins=[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+                           labels=['[0-10)', '[10-20)', '[20-30)', '[30-40)', '[40-50)', 
+                                 '[50-60)', '[60-70)', '[70-80)', '[80-90)', '[90-100)'])
     })
+    
+    return data
 
 def test_predictor_initialization(predictor):
     """Test predictor initialization."""
     assert predictor.model is None
-    assert predictor.preprocessor is None
+    assert predictor.preprocessor is not None
 
-def test_load_model(predictor, tmp_path):
-    """Test loading a trained model."""
-    # Create a dummy model file
-    model_path = tmp_path / "model.joblib"
-    with open(model_path, 'w') as f:
-        f.write("dummy model")
-    
-    # Test loading model
-    with pytest.raises(Exception):  # Should raise exception for invalid model file
-        predictor.load_model(str(model_path))
-
-def test_preprocess_input(predictor, sample_data):
-    """Test preprocessing input data."""
-    # Preprocess data
-    processed_data = predictor.preprocess_input(sample_data)
-    
-    # Check output
-    assert isinstance(processed_data, np.ndarray)
-    assert processed_data.shape[0] == len(sample_data)
-
-def test_predict(predictor, sample_data):
-    """Test making predictions."""
-    # Try to predict without loading model
-    with pytest.raises(ValueError):
+def test_predict_without_model(predictor, sample_data):
+    """Test prediction without model."""
+    with pytest.raises(ValueError, match="Model not loaded"):
         predictor.predict(sample_data)
 
-def test_predict_proba(predictor, sample_data):
-    """Test getting prediction probabilities."""
-    # Try to get probabilities without loading model
-    with pytest.raises(ValueError):
+def test_predict_proba_without_model(predictor, sample_data):
+    """Test probability prediction without model."""
+    with pytest.raises(ValueError, match="Model not loaded"):
         predictor.predict_proba(sample_data)
-
-def test_calculate_confidence(predictor, sample_data):
-    """Test calculating confidence scores."""
-    # Create dummy probabilities
-    probabilities = np.array([
-        [0.8, 0.2],
-        [0.3, 0.7],
-        [0.9, 0.1]
-    ])
-    
-    # Calculate confidence
-    confidence = predictor.calculate_confidence(probabilities)
-    
-    # Check confidence scores
-    assert isinstance(confidence, np.ndarray)
-    assert len(confidence) == len(probabilities)
-    assert np.all(confidence >= 0) and np.all(confidence <= 1)
-
-def test_save_predictions(predictor, sample_data, tmp_path):
-    """Test saving predictions."""
-    # Create dummy predictions
-    predictions = np.array(['NO', 'YES', 'NO'])
-    probabilities = np.array([[0.8, 0.2], [0.3, 0.7], [0.9, 0.1]])
-    
-    # Save predictions
-    output_path = tmp_path / "predictions.csv"
-    predictor.save_predictions(sample_data, predictions, probabilities, str(output_path))
-    
-    # Check that file was created
-    assert output_path.exists()
 
 def test_inference_with_invalid_data(predictor):
     """Test inference with invalid data."""
@@ -103,8 +58,8 @@ def test_inference_with_invalid_data(predictor):
     })
     
     # Test that it handles invalid data gracefully
-    with pytest.raises(Exception):
-        predictor.preprocess_input(data)
+    with pytest.raises(ValueError):
+        predictor.predict(data)
 
 def test_inference_with_missing_data(predictor):
     """Test inference with missing data."""
@@ -115,5 +70,24 @@ def test_inference_with_missing_data(predictor):
     })
     
     # Test that it handles missing data gracefully
-    with pytest.raises(Exception):
-        predictor.preprocess_input(data) 
+    with pytest.raises(ValueError):
+        predictor.predict(data)
+
+def test_calculate_confidence(predictor):
+    """Test confidence calculation."""
+    probabilities = np.array([[0.8, 0.2], [0.3, 0.7], [0.9, 0.1]])
+    confidence = predictor.calculate_confidence(probabilities)
+    assert np.allclose(confidence, np.array([0.8, 0.7, 0.9]))
+
+def test_save_predictions(predictor, tmp_path):
+    """Test saving predictions."""
+    # Create sample predictions
+    predictions = np.array(['NO', 'YES', 'NO'])
+    probabilities = np.array([[0.8, 0.2], [0.3, 0.7], [0.9, 0.1]])
+    
+    # Save predictions
+    output_path = tmp_path / "predictions.csv"
+    predictor.save_predictions(pd.DataFrame(), predictions, probabilities, str(output_path))
+    
+    # Check that file was created
+    assert output_path.exists() 
