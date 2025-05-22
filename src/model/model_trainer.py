@@ -19,11 +19,21 @@ class ModelTrainer:
         self.logger = logging.getLogger(__name__)
 
     def train(self, X: pd.DataFrame, y: pd.Series) -> None:
-        """Train the model."""
+        """
+        Train the model on the provided data.
+        
+        Args:
+            X (pd.DataFrame): Feature matrix
+            y (pd.Series): Target variable
+        """
         try:
-            self.model = RandomForestClassifier(**self.model_params)
-            self.model.fit(X, y)
+            # Preprocess the data
+            X_processed = self.preprocessor.fit_transform(X)
+            
+            # Train the model
+            self.model.fit(X_processed, y)
             self.logger.info("Model training completed successfully")
+            
         except Exception as e:
             self.logger.error(f"Error during model training: {str(e)}")
             raise

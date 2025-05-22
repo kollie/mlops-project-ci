@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 import yaml
@@ -33,35 +33,33 @@ class Preprocessor:
         )
         self.logger = logging.getLogger(__name__)
     
-    def _create_preprocessing_pipeline(self):
-        """
-        Create the preprocessing pipeline based on configuration.
-        
-        Returns:
-            sklearn.pipeline.Pipeline: Preprocessing pipeline
-        """
+    def _create_preprocessing_pipeline(self) -> ColumnTransformer:
+        """Create the preprocessing pipeline."""
         try:
-            # Get column lists from config
-            categorical_cols = self.config['features']['categorical_columns']
-            numerical_cols = self.config['features']['numerical_columns']
+            # Get feature lists from config
+            categorical_features = self.config['features']['categorical_features']
+            numerical_features = self.config['features']['numerical_features']
             
-            # Create preprocessing steps
+            # Create transformers
             categorical_transformer = Pipeline(steps=[
+                ('imputer', SimpleImputer(strategy='most_frequent')),
                 ('onehot', OneHotEncoder(handle_unknown='ignore'))
             ])
             
             numerical_transformer = Pipeline(steps=[
+                ('imputer', SimpleImputer(strategy='median')),
                 ('scaler', StandardScaler())
             ])
             
-            # Combine preprocessing steps
+            # Create column transformer
             preprocessor = ColumnTransformer(
                 transformers=[
-                    ('num', numerical_transformer, numerical_cols),
-                    ('cat', categorical_transformer, categorical_cols)
-                ])
+                    ('num', numerical_transformer, numerical_features),
+                    ('cat', categorical_transformer, categorical_features)
+                ],
+                remainder='drop'
+            )
             
-            self.logger.info("Preprocessing pipeline created successfully")
             return preprocessor
             
         except Exception as e:

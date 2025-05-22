@@ -11,22 +11,31 @@ def preprocessor():
 @pytest.fixture
 def sample_data():
     """Create sample data for testing."""
-    return pd.DataFrame({
-        'encounter_id': range(100),
-        'patient_nbr': range(100),
-        'age': np.random.randint(0, 100, 100),
-        'time_in_hospital': np.random.randint(1, 15, 100),
-        'num_lab_procedures': np.random.randint(1, 100, 100),
-        'num_procedures': np.random.randint(0, 10, 100),
-        'num_medications': np.random.randint(1, 50, 100),
-        'number_outpatient': np.random.randint(0, 20, 100),
-        'number_emergency': np.random.randint(0, 20, 100),
-        'number_inpatient': np.random.randint(0, 20, 100),
-        'race': ['Caucasian', 'AfricanAmerican', 'Hispanic'] * 33 + ['Caucasian'],
-        'gender': ['Female', 'Male'] * 50,
-        'age_group': ['[0-10)', '[10-20)', '[20-30)'] * 33 + ['[0-10)'],
-        'readmitted': ['NO', 'YES', 'NO'] * 33 + ['NO']
+    np.random.seed(42)
+    n_samples = 100
+    
+    data = pd.DataFrame({
+        'encounter_id': range(n_samples),
+        'patient_nbr': range(n_samples),
+        'age': np.random.randint(0, 100, n_samples),
+        'time_in_hospital': np.random.randint(1, 15, n_samples),
+        'num_lab_procedures': np.random.randint(0, 100, n_samples),
+        'num_procedures': np.random.randint(0, 10, n_samples),
+        'num_medications': np.random.randint(0, 20, n_samples),
+        'number_outpatient': np.random.randint(0, 10, n_samples),
+        'number_emergency': np.random.randint(0, 10, n_samples),
+        'number_inpatient': np.random.randint(0, 10, n_samples),
+        'number_diagnoses': np.random.randint(0, 10, n_samples),
+        'race': np.random.choice(['Caucasian', 'AfricanAmerican', 'Hispanic', 'Asian', 'Other'], n_samples),
+        'gender': np.random.choice(['Male', 'Female'], n_samples),
+        'age_group': pd.cut(np.random.randint(0, 100, n_samples), 
+                           bins=[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+                           labels=['[0-10)', '[10-20)', '[20-30)', '[30-40)', '[40-50)', 
+                                 '[50-60)', '[60-70)', '[70-80)', '[80-90)', '[90-100)']),
+        'readmitted': np.random.choice(['NO', 'YES'], n_samples)
     })
+    
+    return data
 
 def test_preprocessing_pipeline_creation(preprocessor):
     """Test creation of preprocessing pipeline."""
