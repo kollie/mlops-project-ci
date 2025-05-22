@@ -29,15 +29,18 @@ class DataLoader:
         )
         self.logger = logging.getLogger(__name__)
     
-    def load_data(self) -> pd.DataFrame:
+    def load_data(self, file_path: str = None) -> pd.DataFrame:
         """
-        Load the raw data from the configured path.
+        Load the raw data from the specified path or configured path.
         
+        Args:
+            file_path (str, optional): Path to the data file. If None, uses the path from config.
+            
         Returns:
             pd.DataFrame: Loaded dataset
         """
         try:
-            data_path = self.config['data']['raw_data_path']
+            data_path = file_path if file_path is not None else self.config['data']['raw_data_path']
             self.logger.info(f"Loading data from {data_path}")
             return pd.read_csv(data_path)
         except Exception as e:
