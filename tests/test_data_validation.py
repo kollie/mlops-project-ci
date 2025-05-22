@@ -63,33 +63,46 @@ def test_check_types_valid(data_validator, valid_data):
     # Test type checking with valid data
     assert data_validator.check_types(valid_data) is True
 
-def test_check_types_invalid(data_validator):
+def test_check_types_invalid(validator):
     # Test type checking with invalid data
     invalid_data = pd.DataFrame({
+        'encounter_id': ['1', '2', '3'],  # Should be numerical
+        'patient_nbr': ['1', '2', '3'],  # Should be numerical
+        'race': ['Caucasian'] * 3,
+        'gender': ['Female'] * 3,
         'age': ['25', '30', '35'],  # Should be numerical
-        'income': [50000, 60000, 70000],
-        'category': [1, 2, 1],  # Should be categorical
-        'location': ['NY', 'CA', 'TX'],
-        'target': [0, 1, 0]
+        'time_in_hospital': range(3),
+        'num_lab_procedures': range(3),
+        'num_procedures': range(3),
+        'num_medications': range(3),
+        'number_outpatient': range(3),
+        'number_emergency': range(3),
+        'number_inpatient': range(3),
+        'readmitted': ['NO', 'YES', 'NO']
     })
-    assert data_validator.check_types(invalid_data) is True  # Returns True but logs warnings
+    with pytest.raises(ValueError, match="encounter_id must be numeric"):
+        validator.validate_data(invalid_data)
 
-def test_handle_missing_values(data_validator):
+def test_handle_missing_values(validator):
     # Test handling missing values
     data = pd.DataFrame({
+        'encounter_id': range(3),
+        'patient_nbr': range(3),
+        'race': ['Caucasian'] * 3,
+        'gender': ['Female'] * 3,
         'age': [25, np.nan, 35],
-        'income': [50000, 60000, np.nan],
-        'category': ['A', 'B', np.nan],
-        'location': ['NY', 'CA', 'TX'],
-        'target': [0, 1, 0]
+        'time_in_hospital': range(3),
+        'num_lab_procedures': range(3),
+        'num_procedures': range(3),
+        'num_medications': range(3),
+        'number_outpatient': range(3),
+        'number_emergency': range(3),
+        'number_inpatient': range(3),
+        'readmitted': ['NO', 'YES', 'NO']
     })
     
-    processed_data = data_validator.handle_missing_values(data)
-    
-    # Check that missing values are handled
-    assert not processed_data['age'].isnull().any()
-    assert not processed_data['income'].isnull().any()
-    assert not processed_data['category'].isnull().any()
+    with pytest.raises(ValueError, match="Data contains missing values"):
+        validator.validate_data(data)
 
 def test_validate_data_valid(data_validator, valid_data):
     # Test complete validation with valid data
