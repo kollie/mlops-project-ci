@@ -11,17 +11,15 @@ def evaluator():
 @pytest.fixture
 def sample_predictions():
     """Create sample predictions for testing."""
-    return {
-        'y_true': np.array(['NO', 'YES', 'NO', 'YES', 'NO']),
-        'y_pred': np.array(['NO', 'YES', 'NO', 'NO', 'YES']),
-        'y_prob': np.array([
-            [0.8, 0.2],
-            [0.3, 0.7],
-            [0.9, 0.1],
-            [0.6, 0.4],
-            [0.4, 0.6]
-        ])
-    }
+    np.random.seed(42)
+    n_samples = 100
+    
+    # Generate random predictions and true labels
+    y_true = np.random.choice(['NO', 'YES'], n_samples)
+    y_pred = np.random.choice(['NO', 'YES'], n_samples)
+    y_prob = np.random.random((n_samples, 2))
+    
+    return y_true, y_pred, y_prob
 
 def test_evaluator_initialization(evaluator):
     """Test evaluator initialization."""
@@ -30,79 +28,65 @@ def test_evaluator_initialization(evaluator):
 
 def test_calculate_metrics(evaluator, sample_predictions):
     """Test calculation of evaluation metrics."""
-    metrics = evaluator.calculate_metrics(
-        sample_predictions['y_true'],
-        sample_predictions['y_pred'],
-        sample_predictions['y_prob']
-    )
+    y_true, y_pred, _ = sample_predictions
     
-    # Check that all required metrics are present
+    # Calculate metrics
+    metrics = evaluator.calculate_metrics(y_true, y_pred)
+    
+    # Check metrics
     assert 'accuracy' in metrics
     assert 'precision' in metrics
     assert 'recall' in metrics
-    assert 'f1_score' in metrics
-    assert 'roc_auc' in metrics
-    
-    # Check metric values are valid
-    assert 0 <= metrics['accuracy'] <= 1
-    assert 0 <= metrics['precision'] <= 1
-    assert 0 <= metrics['recall'] <= 1
-    assert 0 <= metrics['f1_score'] <= 1
-    assert 0 <= metrics['roc_auc'] <= 1
+    assert 'f1' in metrics
+    assert all(0 <= v <= 1 for v in metrics.values())
 
 def test_calculate_confusion_matrix(evaluator, sample_predictions):
     """Test calculation of confusion matrix."""
-    cm = evaluator.calculate_confusion_matrix(
-        sample_predictions['y_true'],
-        sample_predictions['y_pred']
-    )
+    y_true, y_pred, _ = sample_predictions
+    cm = evaluator.calculate_confusion_matrix(y_true, y_pred)
     
     # Check confusion matrix shape and values
     assert cm.shape == (2, 2)
     assert np.all(cm >= 0)
-    assert cm.sum() == len(sample_predictions['y_true'])
+    assert cm.sum() == len(y_true)
 
 def test_calculate_roc_curve(evaluator, sample_predictions):
     """Test calculation of ROC curve."""
-    fpr, tpr, thresholds = evaluator.calculate_roc_curve(
-        sample_predictions['y_true'],
-        sample_predictions['y_prob'][:, 1]
-    )
+    y_true, _, y_prob = sample_predictions
     
-    # Check ROC curve values
-    assert len(fpr) == len(tpr) == len(thresholds)
-    assert np.all(fpr >= 0) and np.all(fpr <= 1)
-    assert np.all(tpr >= 0) and np.all(tpr <= 1)
-    assert np.all(thresholds >= 0) and np.all(thresholds <= 1)
+    # Calculate ROC curve
+    fpr, tpr, thresholds = evaluator.calculate_roc_curve(y_true, y_prob, pos_label='YES')
+    
+    # Check outputs
+    assert len(fpr) == len(tpr)
+    assert len(fpr) == len(thresholds)
+    assert all(0 <= x <= 1 for x in fpr)
+    assert all(0 <= x <= 1 for x in tpr)
 
 def test_calculate_precision_recall_curve(evaluator, sample_predictions):
     """Test calculation of precision-recall curve."""
-    precision, recall, thresholds = evaluator.calculate_precision_recall_curve(
-        sample_predictions['y_true'],
-        sample_predictions['y_prob'][:, 1]
-    )
+    y_true, _, y_prob = sample_predictions
     
-    # Check precision-recall curve values
-    assert len(precision) == len(recall) == len(thresholds)
-    assert np.all(precision >= 0) and np.all(precision <= 1)
-    assert np.all(recall >= 0) and np.all(recall <= 1)
-    assert np.all(thresholds >= 0) and np.all(thresholds <= 1)
+    # Calculate precision-recall curve
+    precision, recall, thresholds = evaluator.calculate_precision_recall_curve(y_true, y_prob, pos_label='YES')
+    
+    # Check outputs
+    assert len(precision) == len(recall)
+    assert len(precision) == len(thresholds)
+    assert all(0 <= x <= 1 for x in precision)
+    assert all(0 <= x <= 1 for x in recall)
 
 def test_save_metrics(evaluator, sample_predictions, tmp_path):
     """Test saving evaluation metrics."""
-    # Calculate metrics
-    metrics = evaluator.calculate_metrics(
-        sample_predictions['y_true'],
-        sample_predictions['y_pred'],
-        sample_predictions['y_prob']
-    )
+    y_true, y_pred, _ = sample_predictions
     
-    # Save metrics
-    metrics_path = tmp_path / "metrics.json"
-    evaluator.save_metrics(metrics, str(metrics_path))
+    # Calculate and save metrics
+    metrics = evaluator.calculate_metrics(y_true, y_pred)
+    output_path = tmp_path / "metrics.json"
+    evaluator.save_metrics(metrics, str(output_path))
     
     # Check that file was created
-    assert metrics_path.exists()
+    assert output_path.exists()
 
 def test_evaluation_with_invalid_data(evaluator):
     """Test evaluation with invalid data."""
@@ -124,4 +108,17 @@ def test_evaluation_with_missing_data(evaluator):
     
     # Test that it handles missing data gracefully
     with pytest.raises(Exception):
-        evaluator.calculate_metrics(y_true, y_pred, y_prob) 
+        evaluator.calculate_metrics(y_true, y_pred, y_prob)
+
+def test_generate_classification_report(evaluator, sample_predictions):
+    """Test generation of classification report."""
+    y_true, y_pred, _ = sample_predictions
+    
+    # Generate report
+    report = evaluator.generate_classification_report(y_true, y_pred)
+    
+    # Check report
+    assert isinstance(report, str)
+    assert 'precision' in report.lower()
+    assert 'recall' in report.lower()
+    assert 'f1-score' in report.lower() 

@@ -15,8 +15,6 @@ def sample_data():
     n_samples = 100
     
     data = pd.DataFrame({
-        'encounter_id': range(n_samples),
-        'patient_nbr': range(n_samples),
         'age': np.random.randint(0, 100, n_samples),
         'time_in_hospital': np.random.randint(1, 15, n_samples),
         'num_lab_procedures': np.random.randint(0, 100, n_samples),
@@ -28,10 +26,6 @@ def sample_data():
         'number_diagnoses': np.random.randint(0, 10, n_samples),
         'race': np.random.choice(['Caucasian', 'AfricanAmerican', 'Hispanic', 'Asian', 'Other'], n_samples),
         'gender': np.random.choice(['Male', 'Female'], n_samples),
-        'age_group': pd.cut(np.random.randint(0, 100, n_samples), 
-                           bins=[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-                           labels=['[0-10)', '[10-20)', '[20-30)', '[30-40)', '[40-50)', 
-                                 '[50-60)', '[60-70)', '[70-80)', '[80-90)', '[90-100)']),
         'readmitted': np.random.choice(['NO', 'YES'], n_samples)
     })
     
@@ -64,30 +58,42 @@ def test_transform_without_fit(preprocessor, sample_data):
     with pytest.raises(ValueError):
         preprocessor.transform(X)
 
-def test_handle_categorical_features(preprocessor, sample_data):
-    """Test handling of categorical features."""
-    # Prepare data
-    X = sample_data.drop(columns=['readmitted'])
-    
-    # Fit and transform
-    X_transformed = preprocessor.fit_transform(X)
-    
-    # Check that categorical features were properly encoded
-    assert isinstance(X_transformed, np.ndarray)
-    # The number of columns should be greater than original due to one-hot encoding
-    assert X_transformed.shape[1] >= len(X.columns)
-
 def test_handle_numerical_features(preprocessor, sample_data):
     """Test handling of numerical features."""
-    # Prepare data with only numerical features
-    X = sample_data[['age', 'time_in_hospital', 'num_lab_procedures']]
+    # Get numerical features
+    numerical_features = sample_data.select_dtypes(include=['int64', 'float64']).columns
     
-    # Fit and transform
-    X_transformed = preprocessor.fit_transform(X)
+    # Transform numerical features
+    transformed_data = preprocessor.transform(sample_data)
     
-    # Check that numerical features were properly scaled
-    assert isinstance(X_transformed, np.ndarray)
-    assert X_transformed.shape[1] == len(X.columns)
+    # Check that numerical features were transformed
+    assert isinstance(transformed_data, np.ndarray)
+    assert transformed_data.shape[0] == len(sample_data)
+    assert transformed_data.shape[1] >= len(numerical_features)
+
+def test_handle_categorical_features(preprocessor, sample_data):
+    """Test handling of categorical features."""
+    # Get categorical features
+    categorical_features = sample_data.select_dtypes(include=['object']).columns
+    
+    # Transform categorical features
+    transformed_data = preprocessor.transform(sample_data)
+    
+    # Check that categorical features were transformed
+    assert isinstance(transformed_data, np.ndarray)
+    assert transformed_data.shape[0] == len(sample_data)
+    assert transformed_data.shape[1] >= len(categorical_features)
+
+def test_preprocessing_pipeline(preprocessor, sample_data):
+    """Test complete preprocessing pipeline."""
+    # Transform data
+    transformed_data = preprocessor.transform(sample_data)
+    
+    # Check transformed data
+    assert isinstance(transformed_data, np.ndarray)
+    assert transformed_data.shape[0] == len(sample_data)
+    assert not np.any(np.isnan(transformed_data))
+    assert not np.any(np.isinf(transformed_data))
 
 def test_preprocessing_with_missing_values(preprocessor):
     """Test preprocessing with missing values."""
@@ -95,13 +101,18 @@ def test_preprocessing_with_missing_values(preprocessor):
     data = pd.DataFrame({
         'age': [25, np.nan, 35],
         'time_in_hospital': [5, 7, np.nan],
+        'num_medications': [10, 15, 20],
         'race': ['Caucasian', 'AfricanAmerican', 'Hispanic'],
-        'gender': ['Female', 'Male', 'Female']
+        'gender': ['Male', 'Female', 'Male']
     })
     
-    # Test that it handles missing values gracefully
-    with pytest.raises(Exception):
-        preprocessor.fit_transform(data)
+    # Transform data
+    transformed_data = preprocessor.transform(data)
+    
+    # Check that missing values were handled
+    assert isinstance(transformed_data, np.ndarray)
+    assert not np.any(np.isnan(transformed_data))
+    assert not np.any(np.isinf(transformed_data))
 
 def test_preprocessing_with_invalid_data(preprocessor):
     """Test preprocessing with invalid data."""

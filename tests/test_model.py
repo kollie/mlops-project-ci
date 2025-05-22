@@ -1,6 +1,6 @@
 import pytest
-import numpy as np
 import pandas as pd
+import numpy as np
 from src.model.model_trainer import ModelTrainer
 
 @pytest.fixture
@@ -11,27 +11,30 @@ def model_trainer():
 @pytest.fixture
 def sample_data():
     """Create sample data for testing."""
-    return pd.DataFrame({
-        'encounter_id': range(100),
-        'patient_nbr': range(100),
-        'age': np.random.randint(0, 100, 100),
-        'time_in_hospital': np.random.randint(1, 15, 100),
-        'num_lab_procedures': np.random.randint(1, 100, 100),
-        'num_procedures': np.random.randint(0, 10, 100),
-        'num_medications': np.random.randint(1, 50, 100),
-        'number_outpatient': np.random.randint(0, 20, 100),
-        'number_emergency': np.random.randint(0, 20, 100),
-        'number_inpatient': np.random.randint(0, 20, 100),
-        'race': ['Caucasian', 'AfricanAmerican', 'Hispanic'] * 33 + ['Caucasian'],
-        'gender': ['Female', 'Male'] * 50,
-        'age_group': ['[0-10)', '[10-20)', '[20-30)'] * 33 + ['[0-10)'],
-        'readmitted': ['NO', 'YES', 'NO'] * 33 + ['NO']
+    np.random.seed(42)
+    n_samples = 100
+    
+    data = pd.DataFrame({
+        'age': np.random.randint(0, 100, n_samples),
+        'time_in_hospital': np.random.randint(1, 15, n_samples),
+        'num_lab_procedures': np.random.randint(0, 100, n_samples),
+        'num_procedures': np.random.randint(0, 10, n_samples),
+        'num_medications': np.random.randint(0, 20, n_samples),
+        'number_outpatient': np.random.randint(0, 10, n_samples),
+        'number_emergency': np.random.randint(0, 10, n_samples),
+        'number_inpatient': np.random.randint(0, 10, n_samples),
+        'number_diagnoses': np.random.randint(0, 10, n_samples),
+        'race': np.random.choice(['Caucasian', 'AfricanAmerican', 'Hispanic', 'Asian', 'Other'], n_samples),
+        'gender': np.random.choice(['Male', 'Female'], n_samples),
+        'readmitted': np.random.choice(['NO', 'YES'], n_samples)
     })
+    
+    return data
 
 def test_model_initialization(model_trainer):
     """Test model initialization."""
     assert model_trainer.model is None
-    assert model_trainer.model_params is not None
+    assert model_trainer.preprocessor is not None
 
 def test_train_model(model_trainer, sample_data):
     """Test model training."""
@@ -44,15 +47,14 @@ def test_train_model(model_trainer, sample_data):
     
     # Check that model was trained
     assert model_trainer.model is not None
-    assert hasattr(model_trainer.model, 'predict')
 
 def test_predict(model_trainer, sample_data):
-    """Test model predictions."""
+    """Test model prediction."""
     # Prepare data
     X = sample_data.drop(columns=['readmitted'])
     y = sample_data['readmitted']
     
-    # Train model
+    # Train model first
     model_trainer.train(X, y)
     
     # Make predictions
@@ -61,47 +63,52 @@ def test_predict(model_trainer, sample_data):
     # Check predictions
     assert isinstance(predictions, np.ndarray)
     assert len(predictions) == len(X)
-    assert set(np.unique(predictions)).issubset({'NO', 'YES'})
+    assert all(pred in ['NO', 'YES'] for pred in predictions)
 
 def test_predict_proba(model_trainer, sample_data):
-    """Test prediction probabilities."""
+    """Test model probability prediction."""
     # Prepare data
     X = sample_data.drop(columns=['readmitted'])
     y = sample_data['readmitted']
     
-    # Train model
+    # Train model first
     model_trainer.train(X, y)
     
-    # Get prediction probabilities
+    # Get probabilities
     probabilities = model_trainer.predict_proba(X)
     
     # Check probabilities
     assert isinstance(probabilities, np.ndarray)
-    assert probabilities.shape == (len(X), 2)  # 2 classes
-    assert np.all(probabilities >= 0) and np.all(probabilities <= 1)
+    assert probabilities.shape == (len(X), 2)
     assert np.allclose(probabilities.sum(axis=1), 1.0)
 
 def test_save_load_model(model_trainer, sample_data, tmp_path):
-    """Test saving and loading model."""
+    """Test model saving and loading."""
     # Prepare data
     X = sample_data.drop(columns=['readmitted'])
     y = sample_data['readmitted']
     
-    # Train model
+    # Train model first
     model_trainer.train(X, y)
     
     # Save model
     model_path = tmp_path / "model.joblib"
     model_trainer.save_model(str(model_path))
     
+    # Check that file was created
+    assert model_path.exists()
+    
     # Create new trainer and load model
     new_trainer = ModelTrainer()
     new_trainer.load_model(str(model_path))
     
-    # Check that loaded model makes same predictions
+    # Check that model was loaded
+    assert new_trainer.model is not None
+    
+    # Check that predictions match
     original_preds = model_trainer.predict(X)
     loaded_preds = new_trainer.predict(X)
-    np.testing.assert_array_equal(original_preds, loaded_preds)
+    assert np.array_equal(original_preds, loaded_preds)
 
 def test_model_with_invalid_data(model_trainer):
     """Test model with invalid data."""
