@@ -1,0 +1,11 @@
+encounter_id,patient_nbr,race,gender,age,weight,admission_type_id,discharge_disposition_id,admission_source_id,time_in_hospital,num_lab_procedures,num_procedures,num_medications,number_outpatient,number_emergency,number_inpatient,diag_1,diag_2,diag_3,number_diagnoses,max_glu_serum,A1Cresult,metformin,repaglinide,nateglinide,chlorpropamide,glimepiride,acetohexamide,glipizide,glyburide,tolbutamide,pioglitazone,rosiglitazone,acarbose,miglitol,troglitazone,tolazamide,examide,citoglipton,insulin,glyburide-metformin,glipizide-metformin,glimepiride-pioglitazone,metformin-rosiglitazone,metformin-pioglitazone,change,diabetesMed,readmitted
+24,24,Caucasian,Female,68,?,3,27,10,5,23,8,34,1,6,10,250.00,250.00,250.00,13,None,None,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,Yes,NO
+55,55,Caucasian,Female,44,?,3,6,10,7,43,3,12,4,5,19,250.00,250.00,250.00,3,None,None,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,Yes,NO
+7,7,Caucasian,Female,71,?,5,1,9,12,30,7,11,9,17,2,250.00,250.00,250.00,10,None,None,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,Yes,NO
+3,3,Caucasian,Female,32,?,2,28,23,14,51,5,18,9,0,17,250.00,250.00,250.00,10,None,None,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,Yes,NO
+35,35,Caucasian,Female,76,?,8,21,11,11,7,1,49,8,15,14,250.00,250.00,250.00,11,None,None,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,Yes,NO
+62,62,Caucasian,Female,15,?,7,5,9,7,6,2,20,6,1,17,250.00,250.00,250.00,13,None,None,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,Yes,NO
+11,11,Caucasian,Female,44,?,5,29,8,5,88,1,17,9,3,19,250.00,250.00,250.00,14,None,None,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,Yes,NO
+91,91,Caucasian,Female,85,?,8,19,12,6,64,9,28,13,15,13,250.00,250.00,250.00,9,None,None,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,Yes,NO
+69,69,Caucasian,Female,18,?,4,20,16,4,6,7,20,1,15,7,250.00,250.00,250.00,13,None,None,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,Yes,NO
+85,85,Caucasian,Female,94,?,1,11,6,2,75,6,38,7,8,16,250.00,250.00,250.00,6,None,None,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,Yes,NO

@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from src.validation import DataValidator
+from src.validation.data_validator import DataValidator
 
 @pytest.fixture
 def validator():
