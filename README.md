@@ -1,108 +1,167 @@
-# Diabetic Readmission Prediction MLOps Project
+# MLOps Group Project
 
-This project implements a machine learning pipeline for predicting diabetic patient readmission using MLOps best practices.
+This project implements a machine learning pipeline for predicting hospital readmission rates using patient data.
 
 ## Project Structure
 
 ```
 .
 ├── data/
-│   ├── raw/
-│   │   └── diabetic_readmission_data.csv
-│   ├── processed/
-│   └── test/
+│   ├── raw/               # Raw data files
+│   ├── processed/         # Processed data files
+│   └── interim/          # Intermediate data files
+├── logs/                 # Log files
+├── models/              # Trained models
+├── notebooks/           # Jupyter notebooks
+├── plots/              # Generated plots
 ├── src/
-│   ├── data_loader/
-│   │   ├── __init__.py
-│   │   └── data_loader.py
-│   ├── preprocessing/
-│   │   ├── __init__.py
-│   │   └── preprocessor.py
-│   ├── validation/
-│   │   ├── __init__.py
-│   │   └── validator.py
-│   ├── model/
-│   │   ├── __init__.py
-│   │   └── train.py
-│   ├── evaluation/
-│   │   ├── __init__.py
-│   │   └── metrics.py
-│   ├── inference/
-│   │   ├── __init__.py
-│   │   └── predict.py
-│   ├── config.yaml
-│   └── main.py
-├── models/
-├── logs/
-├── requirements.txt
-└── README.md
+│   ├── data/           # Data loading and validation
+│   ├── eda/            # Exploratory Data Analysis
+│   ├── preprocessing/  # Data preprocessing
+│   └── main.py         # Main pipeline script
+└── tests/              # Test files
 ```
 
-## Setup
+## Components
 
-1. Create a virtual environment:
+### 1. Data Loading (`src/data/`)
+
+- Handles data loading from various sources
+- Implements data validation
+- Manages data splitting into train/validation/test sets
+
+### 2. Exploratory Data Analysis (`src/eda/`)
+
+The EDA module provides comprehensive data analysis capabilities:
+
+#### Features
+
+- **Data Description**
+
+  - Generates descriptive statistics
+  - Analyzes data types and distributions
+  - Identifies missing values and outliers
+
+- **Target Analysis**
+
+  - Analyzes target variable distribution
+  - Generates visualizations for target patterns
+  - Calculates class imbalance metrics
+
+- **Feature Analysis**
+
+  - Analyzes numerical and categorical features
+  - Generates distribution plots
+  - Identifies correlations between features
+
+- **Missing Value Analysis**
+
+  - Detects missing values and placeholders
+  - Analyzes patterns in missing data
+  - Provides strategies for handling missing values
+
+- **Low Importance Feature Detection**
+  - Identifies features with low predictive power
+  - Calculates feature importance scores
+  - Recommends features for removal
+
+#### Outputs
+
+- Detailed analysis reports in `logs/eda.log`
+- Visualizations saved in `plots/` directory
+- Processed DataFrame ready for preprocessing
+
+### 3. Preprocessing (`src/preprocessing/`)
+
+The preprocessing module implements a comprehensive data preprocessing pipeline:
+
+#### Features
+
+- **Missing Value Handling**
+
+  - Replaces placeholders with NaN
+  - Imputes missing values using appropriate strategies
+  - Handles both numerical and categorical features
+
+- **Feature Engineering**
+
+  - Encodes categorical variables
+  - Scales numerical features
+  - Creates interaction features
+
+- **Feature Selection**
+
+  - Selects most important features
+  - Removes low-importance features
+  - Maintains feature interpretability
+
+- **Target Processing**
+  - Encodes target variable
+  - Handles class imbalance
+  - Prepares target for model training
+
+#### Outputs
+
+- Processed features (X) and target (y)
+- Preprocessing pipeline for consistent transformations
+- Logs of preprocessing steps in `logs/preprocessing.log`
+
+## Pipeline Flow
+
+1. **Data Loading**
+
+   ```python
+   data_loader = DataLoader(config_path="src/config.yaml")
+   df = data_loader.load_data()
+   ```
+
+2. **Exploratory Data Analysis**
+
+   ```python
+   eda = EDA()
+   df_after_eda = eda.run_analysis(df)
+   ```
+
+3. **Preprocessing**
+   ```python
+   preprocessor = Preprocessor(config_path="src/config.yaml")
+   X_processed, y_processed = preprocessor.run_preprocessing(df_after_eda)
+   ```
+
+## Usage
+
+1. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Run the pipeline:
+   ```bash
+   python src/main.py
+   ```
+
+## Testing
+
+Run tests using pytest:
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+pytest tests/
 ```
 
-2. Install dependencies:
+## Logging
 
-```bash
-pip install -r requirements.txt
-```
+The project implements comprehensive logging:
 
-3. Create necessary directories:
-
-```bash
-mkdir -p data/{raw,processed,test} models logs
-```
-
-4. Place your dataset in `data/raw/diabetic_readmission_data.csv`
-
-## Running the Pipeline
-
-To run the complete ML pipeline:
-
-```bash
-python src/main.py
-```
-
-The pipeline will:
-
-1. Load and validate the data
-2. Split and preprocess the data
-3. Train the model
-4. Evaluate the model
-5. Make predictions
-
-## Output
-
-The pipeline generates several outputs:
-
-- Processed data in `data/processed/`
-- Trained model in `models/`
-- Evaluation metrics in `validation_metrics.csv` and `test_metrics.csv`
-- Predictions in `predictions.csv`
-- Logs in `logs/pipeline.log`
-
-## MLflow Tracking
-
-The project uses MLflow for experiment tracking. To view the MLflow UI:
-
-```bash
-mlflow ui
-```
-
-Then open http://localhost:5000 in your browser.
+- Main pipeline logs: `logs/main.log`
+- EDA logs: `logs/eda.log`
+- Preprocessing logs: `logs/preprocessing.log`
 
 ## Configuration
 
-The pipeline configuration can be modified in `src/config.yaml`. Key parameters include:
+Configuration is managed through `src/config.yaml`:
 
-- Data paths
+- Feature definitions
+- Preprocessing parameters
+- Logging settings
 - Model parameters
-- Feature engineering settings
-- Evaluation metrics
-- Logging configuration
