@@ -159,9 +159,9 @@ if __name__ == "__main__":
     # Example usage
     loader = DataLoader()
     data = loader.load_data('https://drive.google.com/uc?id=1WCn9cjVQH2LP8E5ZC1-cNKVKBE8OrFGy')
-    data = loader.data_preparation(data)
+    data_clean = loader.data_preparation(data)
     
     #train, val, test = loader.split_data(data)
     #loader.save_split_data(train, val, test)
 
-    print(data.head())
+    print(data_clean.head())

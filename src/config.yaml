@@ -19,7 +19,7 @@ database:
 model:
   name: "random_forest"
   random_state: 42
-  test_size: 0.2
+  test_size: 0.1
   validation_size: 0.1
   parameters:
     n_estimators: 100
