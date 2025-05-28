@@ -71,8 +71,11 @@ def test_load_data(data_loader, tmp_path):
         'patient_nbr': [1, 2, 3],
         'readmitted': ['NO', 'YES', 'NO']
     })
-    csv_path = tmp_path / "test_data.csv"
-    sample_data.to_csv(csv_path, index=False)
+    try:
+        csv_path ='https://drive.google.com/uc?id=1WCn9cjVQH2LP8E5ZC1-cNKVKBE8OrFGy'
+    except:
+        csv_path = tmp_path / "test_data.csv"
+        sample_data.to_csv(csv_path, index=False)
     
     # Test loading data
     data = data_loader.load_data(str(csv_path))
