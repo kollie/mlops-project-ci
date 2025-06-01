@@ -17,15 +17,26 @@ database:
 
 # Model parameters
 model:
-  name: "random_forest"
-  random_state: 42
-  test_size: 0.2
-  validation_size: 0.1
-  parameters:
+  active: "random_forest"
+
+  logistic_regression:
+    penalty: "l2"
+    solver: "liblinear"
+    random_state: 42
+    max_iter: 1000
+
+  decision_tree:
+    criterion: "entropy"
+    random_state: 42
+    min_samples_split: 10
+
+  random_forest:
     n_estimators: 100
-    max_depth: 10
-    min_samples_split: 2
-    min_samples_leaf: 1
+    criterion: "gini"
+    min_samples_split: 10
+    random_state: 42
+
+  naive_bayes: {}
 
 # Feature engineering
 features:
@@ -105,3 +116,11 @@ model_registry:
   type: "mlflow"
   tracking_uri: "http://localhost:5000"
   experiment_name: "diabetic_readmission_prediction"
+
+evaluation:
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - roc_auc

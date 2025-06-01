@@ -6,6 +6,32 @@ import mlflow
 import pandas as pd
 from pathlib import Path
 
+# src/evaluation/metrics.py
+
+METRIC_REGISTRY = {
+    "accuracy": accuracy_score,
+    "precision": precision_score,
+    "recall": recall_score,
+    "f1": f1_score,
+    "roc_auc": roc_auc_score,
+}
+
+def calculate_metrics(self, y_true, y_pred, y_prob=None):
+    """Calculate selected metrics from config."""
+    selected_metrics = self.config.get("evaluation", {}).get("metrics", list(METRIC_REGISTRY.keys()))
+    for metric_name in selected_metrics:
+        try:
+            if metric_name == "roc_auc":
+                if y_prob is not None and y_prob.shape[1] > 1:
+                    self.metrics[metric_name] = METRIC_REGISTRY[metric_name](y_true, y_prob[:, 1])
+            else:
+                self.metrics[metric_name] = METRIC_REGISTRY[metric_name](y_true, y_pred)
+        except Exception as e:
+            self.logger.warning(f"Metric {metric_name} failed: {str(e)}")
+    return self.metrics
+
+
+
 class ModelEvaluator:
     def __init__(self, config_path: str = "src/config.yaml"):
         """
