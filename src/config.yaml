@@ -1,6 +1,7 @@
 # Data paths
 data:
   raw_data_path: "data/raw/diabetic_readmission_data.csv"
+  raw_data_format: "csv"
   processed_data_path: "data/processed"
   model_path: "models"
   test_data_path: "data/test"
@@ -52,7 +53,6 @@ features:
     - gender
     - age_group
   numerical_features:
-    - age
     - time_in_hospital
     - num_lab_procedures
     - num_procedures
