@@ -1,6 +1,7 @@
 # Data paths
 data:
   raw_data_path: "data/raw/diabetic_readmission_data.csv"
+  raw_data_format: "csv"
   processed_data_path: "data/processed"
   model_path: "models"
   test_data_path: "data/test"
@@ -19,7 +20,7 @@ database:
 model:
   name: "random_forest"
   random_state: 42
-  test_size: 0.2
+  test_size: 0.1
   validation_size: 0.1
   parameters:
     n_estimators: 100
@@ -52,7 +53,6 @@ features:
     - gender
     - age_group
   numerical_features:
-    - age
     - time_in_hospital
     - num_lab_procedures
     - num_procedures
