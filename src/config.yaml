@@ -1,6 +1,6 @@
-# Data paths
 data:
   raw_data_path: "data/raw/diabetic_readmission_data.csv"
+  raw_data_format: "csv"
   processed_data_path: "data/processed"
   model_path: "models"
   test_data_path: "data/test"
@@ -17,25 +17,36 @@ database:
 
 # Model parameters
 model:
+  # Which model we intend to run by default
   active: "random_forest"
+  name: "random_forest"
 
+  # Global parameters (if you use them outside individual-model blocks)
+  random_state: 42
+  test_size: 0.1
+  validation_size: 0.1
+
+  # Logistic Regression settings (unused unless active="logistic_regression")
   logistic_regression:
     penalty: "l2"
     solver: "liblinear"
     random_state: 42
     max_iter: 1000
 
+  # Decision Tree settings (unused unless active="decision_tree")
   decision_tree:
     criterion: "entropy"
     random_state: 42
     min_samples_split: 10
 
+  # Random Forest settings (used when active="random_forest")
   random_forest:
     n_estimators: 100
     criterion: "gini"
     min_samples_split: 10
     random_state: 42
 
+  # Naive Bayes placeholder (no hyperparameters by default)
   naive_bayes: {}
 
 # Feature engineering
@@ -63,7 +74,6 @@ features:
     - gender
     - age_group
   numerical_features:
-    - age
     - time_in_hospital
     - num_lab_procedures
     - num_procedures
@@ -116,11 +126,3 @@ model_registry:
   type: "mlflow"
   tracking_uri: "http://localhost:5000"
   experiment_name: "diabetic_readmission_prediction"
-
-evaluation:
-  metrics:
-    - accuracy
-    - precision
-    - recall
-    - f1
-    - roc_auc

@@ -1,2 +1,6 @@
 **/__pycache__/
 .DS_Store
+logs/pipeline.log
+data/raw/*.csv
+
+.coverage
