@@ -114,5 +114,5 @@ def eda_instance(tmp_path):
 def plots_dir(tmp_path):
     """Create a temporary plots directory."""
     plots_dir = tmp_path / "plots"
-    plots_dir.mkdir()
+    plots_dir.mkdir(exist_ok=True)
     return plots_dir 
