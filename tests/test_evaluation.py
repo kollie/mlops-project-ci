@@ -110,6 +110,28 @@ def test_evaluation_with_missing_data(evaluator):
     with pytest.raises(Exception):
         evaluator.calculate_metrics(y_true, y_pred, y_prob)
 
+def test_evaluator_with_invalid_probabilities(evaluator):
+    """Test evaluator behavior with malformed probabilities."""
+    y_true = np.array(['NO', 'YES', 'NO'])
+    y_pred = np.array(['NO', 'YES', 'YES'])
+    y_prob = np.array([[0.9], [0.2], [0.5]])  # Invalid shape (1 prob instead of 2 classes)
+
+    with pytest.raises(Exception):
+        evaluator.calculate_roc_curve(y_true, y_prob)
+
+import builtins
+from unittest.mock import patch
+
+def test_save_metrics_fails_gracefully_on_io_error(evaluator, sample_predictions):
+    """Test save_metrics handles IOError properly."""
+    y_true, y_pred, _ = sample_predictions
+    metrics = evaluator.calculate_metrics(y_true, y_pred)
+
+    with patch.object(builtins, "open", side_effect=IOError("Disk full")):
+        with pytest.raises(IOError):
+            evaluator.save_metrics(metrics, "invalid_path/metrics.json")
+
+
 def test_generate_classification_report(evaluator, sample_predictions):
     """Test generation of classification report."""
     y_true, y_pred, _ = sample_predictions
