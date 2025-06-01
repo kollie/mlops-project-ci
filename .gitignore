@@ -46,6 +46,7 @@ plots/
 Thumbs.db 
 
 logs/pipeline.log
-data/raw/*.csv
+data/**/*.csv
+!data/raw/diabetic_readmission_data.csv
 
 .coverage

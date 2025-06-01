@@ -7,19 +7,10 @@ data:
   train_data_path: "data/processed/train.csv"
   validation_data_path: "data/processed/val.csv"
 
-# Database configuration
-database:
-  host: "localhost"
-  port: 5432
-  database: "mlops_db"
-  user: "user"
-  password: "password"
-
 # Model parameters
 model:
   # Which model we intend to run by default
   active: "random_forest"
-  name: "random_forest"
 
   # Global parameters (if you use them outside individual-model blocks)
   random_state: 42
@@ -215,7 +206,6 @@ evaluation:
 logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  file: "logs/preprocessing.log"
 
 # Model registry
 model_registry:

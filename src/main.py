@@ -1,14 +1,22 @@
 import logging
+import sys
+import os
 from pathlib import Path
 import yaml
-from src.data.data_loader import DataLoader
-from src.eda.eda import EDA
-from src.preprocessing.preprocessor import Preprocessor
+
+# Add project root to path for imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from src.data_loader.data_loader import DataLoader
 
 def setup_logging():
     """Setup logging configuration."""
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
+    
+    # Clear any existing handlers to avoid duplicates
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
     
     logging.basicConfig(
         level=logging.INFO,
@@ -22,8 +30,14 @@ def setup_logging():
 
 def load_config(config_path: str = "src/config.yaml") -> dict:
     """Load configuration from yaml file."""
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
+    try:
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        return config
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    except yaml.YAMLError as e:
+        raise ValueError(f"Invalid YAML in configuration file: {e}")
 
 def main():
     """Main function to run the data processing pipeline."""
@@ -42,28 +56,33 @@ def main():
         df = data_loader.load_data()
         logger.info(f"Data loaded successfully. Shape: {df.shape}")
         
-        # Step 2: Perform EDA
-        logger.info("Starting Exploratory Data Analysis...")
-        eda = EDA()
-        df_after_eda = eda.run_analysis(df)
-        logger.info("EDA completed successfully")
+        # Step 2: Split data
+        logger.info("Splitting data...")
+        train, val, test = data_loader.split_data(df)
+        logger.info(f"Data split successfully - Train: {train.shape}, Val: {val.shape}, Test: {test.shape}")
         
-        # Step 3: Preprocess data
-        logger.info("Starting data preprocessing...")
-        preprocessor = Preprocessor(config_path="src/config.yaml")
-        X_processed, y_processed = preprocessor.run_preprocessing(df_after_eda)
-        logger.info(f"Preprocessing completed. Features shape: {X_processed.shape}, Target shape: {y_processed.shape}")
+        # Step 3: Save split data
+        logger.info("Saving split datasets...")
+        data_loader.save_split_data(train, val, test)
+        logger.info("Split datasets saved successfully")
         
-        # Log final shapes
+        # Future steps would go here:
+        # Step 4: EDA (when module exists)
+        # Step 5: Preprocessing (when module exists)
+        # Step 6: Feature engineering (when module exists)
+        # Step 7: Model training (when module exists)
+        # Step 8: Evaluation (when module exists)
+        
         logger.info("Pipeline completed successfully")
-        logger.info(f"Final processed features shape: {X_processed.shape}")
-        logger.info(f"Final processed target shape: {y_processed.shape}")
-        
-        return X_processed, y_processed
+        return {
+            'train': train,
+            'validation': val,
+            'test': test
+        }
         
     except Exception as e:
         logger.error(f"Error in pipeline: {str(e)}")
         raise
 
 if __name__ == "__main__":
-    main() 
+    main()
