@@ -10,4 +10,7 @@ dependencies:
   - matplotlib
   - seaborn
   - mlflow
-  - pip: dvc[gdrive]
+  - pytest
+  - pytest-cov
+  - pytest-mock
+  - conda-forge::dvc-gdrive
