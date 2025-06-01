@@ -1,5 +1,8 @@
 """
-MLOps Project - Diabetic Readmission Prediction
+MLOps Group Project
+==================
+
+A machine learning pipeline for predicting hospital readmission rates.
 """
 
 __version__ = "0.1.0"
