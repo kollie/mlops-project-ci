@@ -1,12 +1,11 @@
-# Data paths
 data:
   raw_data_path: "data/raw/diabetic_readmission_data.csv"
   raw_data_format: "csv"
   processed_data_path: "data/processed"
   model_path: "models"
-  test_data_path: "data/test"
+  test_data_path: "data/processed/test.csv"
   train_data_path: "data/processed/train.csv"
-  validation_data_path: "data/processed/validation.csv"
+  validation_data_path: "data/processed/val.csv"
 
 # Database configuration
 database:
@@ -18,15 +17,37 @@ database:
 
 # Model parameters
 model:
+  # Which model we intend to run by default
+  active: "random_forest"
   name: "random_forest"
+
+  # Global parameters (if you use them outside individual-model blocks)
   random_state: 42
   test_size: 0.1
   validation_size: 0.1
-  parameters:
+
+  # Logistic Regression settings (unused unless active="logistic_regression")
+  logistic_regression:
+    penalty: "l2"
+    solver: "liblinear"
+    random_state: 42
+    max_iter: 1000
+
+  # Decision Tree settings (unused unless active="decision_tree")
+  decision_tree:
+    criterion: "entropy"
+    random_state: 42
+    min_samples_split: 10
+
+  # Random Forest settings (used when active="random_forest")
+  random_forest:
     n_estimators: 100
-    max_depth: 10
-    min_samples_split: 2
-    min_samples_leaf: 1
+    criterion: "gini"
+    min_samples_split: 10
+    random_state: 42
+
+  # Naive Bayes placeholder (no hyperparameters by default)
+  naive_bayes: {}
 
 # Feature engineering
 features:
@@ -96,7 +117,47 @@ features:
   - 2   
   - 6   
   - 17  
-
+  n_features_to_select: 20
+  categorical_features:
+    - race
+    - gender
+    - age
+    - weight
+    - admission_type_id
+    - discharge_disposition_id
+    - admission_source_id
+    - medical_specialty
+    - diag_1
+    - diag_2
+    - diag_3
+    - max_glu_serum
+    - A1Cresult
+    - metformin
+    - repaglinide
+    - nateglinide
+    - chlorpropamide
+    - glimepiride
+    - acetohexamide
+    - glipizide
+    - glyburide
+    - tolbutamide
+    - pioglitazone
+    - rosiglitazone
+    - acarbose
+    - miglitol
+    - troglitazone
+    - tolazamide
+    - examide
+    - citoglipton
+    - insulin
+    - glyburide-metformin
+    - glipizide-metformin
+    - glimepiride-pioglitazone
+    - metformin-rosiglitazone
+    - metformin-pioglitazone
+    - change
+    - diabetesMed
+    - readmitted
   numerical_features:
     - time_in_hospital
     - num_lab_procedures
@@ -107,20 +168,29 @@ features:
     - number_inpatient
     - number_diagnoses
   drop_columns:
-    - "encounter_id"
-    - "patient_nbr"
-    - "diag_1"
-    - "diag_2"
-    - "diag_3"
+    - encounter_id
+    - patient_nbr
+    - payer_code
+    - medical_specialty
+    - diag_1
+    - diag_2
+    - diag_3
+
+# Feature selection
+feature_selection:
+  n_features: 20 # Number of features to select
+  correlation_threshold: 0.1 # Minimum correlation with target to keep feature
 
 # Preprocessing
 preprocessing:
-  scaling_method: "standard"
-  encoding_method: "one_hot"
-  handle_missing: "mean"
-  feature_selection:
-    method: "correlation"
-    threshold: 0.1
+  missing_value_strategy:
+    numerical: "median"
+    categorical: "most_frequent"
+  scaling:
+    method: "standard"
+  encoding:
+    categorical: "onehot"
+    target: "label"
 
 # Training parameters
 training:
@@ -128,6 +198,8 @@ training:
   epochs: 100
   learning_rate: 0.001
   early_stopping_patience: 10
+  random_state: 42
+  cv_folds: 5
 
 # Evaluation metrics
 evaluation:
@@ -137,16 +209,22 @@ evaluation:
     - "recall"
     - "f1"
     - "roc_auc"
-  cv_folds: 5
+  threshold: 0.5
 
 # Logging
 logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  file: "logs/pipeline.log"
+  file: "logs/preprocessing.log"
 
 # Model registry
 model_registry:
   type: "mlflow"
   tracking_uri: "http://localhost:5000"
   experiment_name: "diabetic_readmission_prediction"
+
+# Output paths
+output:
+  model_path: "models/"
+  plots_path: "plots/"
+  metrics_path: "metrics/"

@@ -2,6 +2,10 @@ import pytest
 import pandas as pd
 import numpy as np
 from src.model.model_trainer import ModelTrainer
+from src.model.model import get_model
+from sklearn.ensemble import RandomForestClassifier
+
+
 
 @pytest.fixture
 def model_trainer():
@@ -109,6 +113,11 @@ def test_save_load_model(model_trainer, sample_data, tmp_path):
     original_preds = model_trainer.predict(X)
     loaded_preds = new_trainer.predict(X)
     assert np.array_equal(original_preds, loaded_preds)
+
+def test_random_forest_model_loading():
+    model = get_model(config_path="tests/mock_config_rf.yaml")
+    assert isinstance(model, RandomForestClassifier)
+    assert model.get_params()["n_estimators"] == 100
 
 def test_model_with_invalid_data(model_trainer):
     """Test model with invalid data."""
