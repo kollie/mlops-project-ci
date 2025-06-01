@@ -1,5 +1,5 @@
 # Python
-__pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -44,3 +44,8 @@ plots/
 # OS specific
 .DS_Store
 Thumbs.db 
+
+logs/pipeline.log
+data/raw/*.csv
+
+.coverage

@@ -1,7 +1,8 @@
 # Data paths
 data:
-  raw_data_path: "data/raw/diabetic_data.csv"
-  processed_data_path: "data/processed/"
+  raw_data_path: "data/raw/diabetic_readmission_data.csv"
+  raw_data_format: "csv"
+  processed_data_path: "data/processed"
   model_path: "models"
   test_data_path: "data/processed/test.csv"
   train_data_path: "data/processed/train.csv"
@@ -19,8 +20,8 @@ database:
 model:
   name: "random_forest"
   random_state: 42
-  test_size: 0.2
-  validation_size: 0.2
+  test_size: 0.1
+  validation_size: 0.1
   parameters:
     n_estimators: 100
     max_depth: 10

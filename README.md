@@ -165,3 +165,103 @@ Configuration is managed through `src/config.yaml`:
 - Preprocessing parameters
 - Logging settings
 - Model parameters
+- Feature engineering settings
+- Evaluation metrics
+- Logging configuration
+
+# Code comments
+
+1. `data_loader.py` – Loads, splits, and saves data
+2. `data_validator.py` – Validates schema, types, completeness, and cleans the data
+3. `validator.py` – Lightweight validation for fast pre-checks (e.g., in CI)
+
+The pipeline uses `config.yaml` to control paths, expectations, and logging.
+
+## Scripts Overview
+
+### `data_loader.py`
+
+**Location:** `src/data_loader/data_loader.py`
+
+**Responsibilities:**
+
+- Load dataset from a local path or Google Drive link (via config)
+- Validate and clean the data (by calling `DataValidator`)
+- Split data into train/validation/test using config-defined ratios
+- Save processed outputs to defined paths
+
+**Key Features:**
+
+- Reads file type (`csv`, `excel`) from config
+- Logs every step and outcome
+- Drops nothing by itself – relies on the validator
+- Safe default fallback behavior (if configured)
+
+### `data_validator.py`
+
+**Location:** `src/validation/data_validator.py`
+
+**Responsibilities:**
+
+- Validate schema, data types, and target distribution
+- Drop rows with missing values
+- Log issues, write full validation report to `logs/validation_report.json`
+
+**Key Features:**
+
+- Uses fallback: treats `'age'` as `'age_group'` if needed
+- Entirely driven by `config.yaml`
+- Logs warnings and errors
+- Designed for full pipeline integration
+
+### `validator.py`
+
+**Location:** `src/validation/validator.py`
+
+**Responsibilities:**
+
+- Lightweight validation for use in fast CI checks
+- Boolean-based: schema, types, missing values, target balance
+- No cleaning or mutation — just checks
+
+**Key Features:**
+
+- Very fast and simple
+- Good for test suites or minimal CLI usage
+- Logs only issues, does not raise exceptions
+
+## Tests Overview
+
+Each script has a dedicated test suite under `tests/`.
+
+### `tests/test_data_loader.py`
+
+**Tests the following:**
+
+- Loading data from Google Drive (or fallback to mock file)
+- Splitting data into train/val/test with correct proportions
+- Saving datasets to correct config-defined paths
+- Using `tmp_path` to avoid real file system side effects
+
+### `tests/test_data_validation.py`
+
+**Tests the following:**
+
+- Cleans rows with missing values
+- Detects type mismatches and raises `TypeError`
+- Fails on missing required columns (`ValueError`)
+- Fails on target distribution imbalance
+- Passes full validation on clean data
+
+### `tests/test_validator.py`
+
+**Tests the following:**
+
+- Schema validation with fallback to `age` if `age_group` is missing
+- Detects missing columns and fails cleanly
+- Accepts correct numeric and categorical types
+- Detects type mismatches
+- Validates acceptable missing value ratios
+- Detects high-missing columns
+- Checks target distribution balance
+- Returns expected booleans from `validate_all()`

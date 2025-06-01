@@ -1,0 +1,13 @@
+name: mlops
+channels:
+  - defaults
+dependencies:
+  - python=3.8
+  - pandas
+  - scikit-learn
+  - pyyaml
+  - python-dotenv
+  - matplotlib
+  - seaborn
+  - mlflow
+  - pip: dvc[gdrive]
