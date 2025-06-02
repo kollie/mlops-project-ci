@@ -198,12 +198,13 @@ training:
 # Evaluation metrics
 evaluation:
   metrics:
-    - "accuracy"
-    - "precision"
-    - "recall"
-    - "f1"
-    - "roc_auc"
-  threshold: 0.5
+    - accuracy
+    - precision
+    - recall
+    - f1_score
+    - roc_auc
+  save_curves: true
+  primary_metric: "f1_score"
 
 # Logging
 logging:

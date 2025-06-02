@@ -15,9 +15,21 @@ def setup_test_environment():
     
     yield
     
-    # Cleanup after tests
-    for directory in directories:
-        if Path(directory).exists():
-            for file in Path(directory).glob('*'):
-                if file.is_file():
-                    file.unlink() 
+    # Cleanup after tests - but preserve important data files
+    cleanup_patterns = {
+        'logs': ['*.log', '*.json'],  # Only remove log files
+        'plots': ['*.png', '*.jpg', '*.pdf'],  # Only remove plot files  
+        'data/processed': ['*'],  # Remove all processed files (can be regenerated)
+        'data/raw': []  # DON'T remove anything from raw data directory
+    }
+    
+    for directory, patterns in cleanup_patterns.items():
+        dir_path = Path(directory)
+        if dir_path.exists():
+            for pattern in patterns:
+                for file in dir_path.glob(pattern):
+                    if file.is_file():
+                        try:
+                            file.unlink()
+                        except Exception:
+                            pass  # Ignore errors during cleanup

@@ -13,6 +13,7 @@ from src.eda.eda import EDAAnalyzer
 from src.preprocessing.preprocessor import Preprocessor
 from src.features.feature_engineering import FeatureEngineer
 from src.model.trainer import ModelTrainer
+from src.evaluation.evaluator import ModelEvaluator
 
 def setup_logging():
     """Setup logging configuration."""
@@ -130,7 +131,29 @@ def main():
         # For inference later:
         predictions = trainer.predict(X_test_eng)
         
-        # Step 9: Evaluation (when module exists)
+        # Step 10: Evaluate Model
+        logger.info("Evaluating model...")
+        evaluator = ModelEvaluator(config_path="src/config.yaml")
+
+        # Get predictions and probabilities
+        predictions = trainer.predict(X_test_eng)
+        probabilities = trainer.predict_proba(X_test_eng)
+
+        # Evaluate model
+        evaluation_results = evaluator.evaluate(
+            y_true=y_test, 
+            y_pred=predictions, 
+            y_pred_proba=probabilities,
+            dataset_name="test"
+        )
+
+        # Get metrics
+        test_metrics = evaluator.get_metrics()
+        logger.info(f"Test metrics: {test_metrics}")
+
+        # Save evaluation results
+        metrics_path = evaluator.save_metrics()
+        logger.info(f"Evaluation metrics saved to: {metrics_path}")
         
         logger.info("Pipeline completed successfully")
         return {
