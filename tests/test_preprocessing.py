@@ -634,7 +634,7 @@ class TestPreprocessor:
 
     # ---------- Edge Cases and Error Handling Tests ----------
 
-    def test_no_numerical_features(self, preprocessor):
+    def test_no_numerical_features(self, sample_config):
         """Test preprocessing with no numerical features."""
         # Create data with only categorical features
         data = pd.DataFrame({
@@ -643,17 +643,23 @@ class TestPreprocessor:
             'readmitted': ['YES', 'NO', 'YES', 'NO', 'YES']
         })
         
-        # Update config to reflect this
+        # Create a fresh preprocessor with modified config
+        preprocessor = Preprocessor(sample_config)
+        
+        # Update config to reflect this data
         preprocessor.config['features']['numerical_features'] = []
         preprocessor.config['features']['categorical_features'] = ['cat1', 'cat2']
+        preprocessor.config['features']['drop_columns'] = []  # No columns to drop
         
         X_processed, y_processed = preprocessor.fit_transform(data)
         
         # Should still work
         assert isinstance(X_processed, pd.DataFrame)
         assert isinstance(y_processed, pd.Series)
+        assert X_processed.shape[0] == len(data)
+        assert len(y_processed) == len(data)
 
-    def test_no_categorical_features(self, preprocessor):
+    def test_no_categorical_features(self, sample_config):
         """Test preprocessing with no categorical features."""
         # Create data with only numerical features
         data = pd.DataFrame({
@@ -662,15 +668,21 @@ class TestPreprocessor:
             'readmitted': ['YES', 'NO', 'YES', 'NO', 'YES']
         })
         
-        # Update config to reflect this
+        # Create a fresh preprocessor with modified config
+        preprocessor = Preprocessor(sample_config)
+        
+        # Update config to reflect this data
         preprocessor.config['features']['numerical_features'] = ['num1', 'num2']
         preprocessor.config['features']['categorical_features'] = []
+        preprocessor.config['features']['drop_columns'] = []  # No columns to drop
         
         X_processed, y_processed = preprocessor.fit_transform(data)
         
         # Should still work
         assert isinstance(X_processed, pd.DataFrame)
         assert isinstance(y_processed, pd.Series)
+        assert X_processed.shape[0] == len(data)
+        assert len(y_processed) == len(data)
 
     def test_consistent_preprocessing(self, preprocessor, sample_data):
         """Test that preprocessing is consistent across multiple runs."""

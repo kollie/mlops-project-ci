@@ -1,267 +1,524 @@
-# MLOps Group Project
+# MLOps Hospital Readmission Prediction Project
 
-This project implements a machine learning pipeline for predicting hospital readmission rates using patient data.
+This project implements a comprehensive machine learning pipeline for predicting hospital readmission rates using patient data. The pipeline follows MLOps best practices with automated testing, logging, evaluation, and inference capabilities.
 
 ## Project Structure
 
 ```
 .
 ├── data/
-│   ├── raw/               # Raw data files
-│   ├── processed/         # Processed data files
-│   └── interim/          # Intermediate data files
-├── logs/                 # Log files
-├── models/              # Trained models
-├── notebooks/           # Jupyter notebooks
-├── plots/              # Generated plots
+│   ├── raw/                    # Raw data files
+│   └── processed/              # Processed data files
+├── logs/                      # Log files from all modules
+├── models/                    # Trained models and artifacts
+├── plots/                     # Generated visualizations
 ├── src/
-│   ├── data/           # Data loading and validation
-│   ├── eda/            # Exploratory Data Analysis
-│   ├── preprocessing/  # Data preprocessing
-│   └── main.py         # Main pipeline script
-└── tests/              # Test files
+│   ├── config.yaml           # Central configuration file
+│   ├── main.py              # Main pipeline orchestrator
+│   ├── data_loader/         # Data loading and management
+│   ├── validation/          # Data validation and quality checks
+│   ├── eda/                 # Exploratory Data Analysis
+│   ├── preprocessing/       # Data preprocessing pipeline
+│   ├── features/            # Feature engineering
+│   ├── model/              # Model training and selection
+│   ├── evaluation/         # Model evaluation and metrics
+│   └── inference/          # Model inference and prediction
+├── tests/                    # Comprehensive test suite
+├── environment.yml          # Conda environment specification
+└── requirements.txt         # Pip requirements (backup)
 ```
 
-## Components
+## Features
 
-### 1. Data Loading (`src/data/`)
+### 🚀 Complete MLOps Pipeline
+- **Data Loading & Validation**: Robust data ingestion with quality checks
+- **Exploratory Data Analysis**: Comprehensive automated analysis with visualizations
+- **Feature Engineering**: Advanced feature creation and selection
+- **Model Training**: Multiple algorithms with hyperparameter optimization
+- **Model Evaluation**: Comprehensive metrics and performance analysis
+- **Model Inference**: Production-ready prediction service
+- **CI/CD Ready**: Automated testing and validation
 
-- Handles data loading from various sources
-- Implements data validation
-- Manages data splitting into train/validation/test sets
+### 📊 Advanced Analytics
+- **Interactive Visualizations**: Automated plot generation for all analysis steps
+- **Statistical Analysis**: In-depth statistical testing and correlation analysis
+- **Performance Monitoring**: Detailed logging and reporting at every step
+- **Model Comparison**: Automated comparison with baseline models
 
-### 2. Exploratory Data Analysis (`src/eda/`)
+## Installation
 
-The EDA module provides comprehensive data analysis capabilities:
+### Using Conda (Recommended)
 
-#### Features
-
-- **Data Description**
-
-  - Generates descriptive statistics
-  - Analyzes data types and distributions
-  - Identifies missing values and outliers
-
-- **Target Analysis**
-
-  - Analyzes target variable distribution
-  - Generates visualizations for target patterns
-  - Calculates class imbalance metrics
-
-- **Feature Analysis**
-
-  - Analyzes numerical and categorical features
-  - Generates distribution plots
-  - Identifies correlations between features
-
-- **Missing Value Analysis**
-
-  - Detects missing values and placeholders
-  - Analyzes patterns in missing data
-  - Provides strategies for handling missing values
-
-- **Low Importance Feature Detection**
-  - Identifies features with low predictive power
-  - Calculates feature importance scores
-  - Recommends features for removal
-
-#### Outputs
-
-- Detailed analysis reports in `logs/eda.log`
-- Visualizations saved in `plots/` directory
-- Processed DataFrame ready for preprocessing
-
-### 3. Preprocessing (`src/preprocessing/`)
-
-The preprocessing module implements a comprehensive data preprocessing pipeline:
-
-#### Features
-
-- **Missing Value Handling**
-
-  - Replaces placeholders with NaN
-  - Imputes missing values using appropriate strategies
-  - Handles both numerical and categorical features
-
-- **Feature Engineering**
-
-  - Encodes categorical variables
-  - Scales numerical features
-  - Creates interaction features
-
-- **Feature Selection**
-
-  - Selects most important features
-  - Removes low-importance features
-  - Maintains feature interpretability
-
-- **Target Processing**
-  - Encodes target variable
-  - Handles class imbalance
-  - Prepares target for model training
-
-#### Outputs
-
-- Processed features (X) and target (y)
-- Preprocessing pipeline for consistent transformations
-- Logs of preprocessing steps in `logs/preprocessing.log`
-
-## Pipeline Flow
-
-1. **Data Loading**
-
-   ```python
-   data_loader = DataLoader(config_path="src/config.yaml")
-   df = data_loader.load_data()
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/kollie/mlops-project-ci.git
+   cd mlops-project-ci
    ```
 
-2. **Exploratory Data Analysis**
-
-   ```python
-   eda = EDA()
-   df_after_eda = eda.run_analysis(df)
+2. **Create and activate conda environment:**
+   ```bash
+   conda env create -f environment.yml
+   conda activate mlops
    ```
 
-3. **Preprocessing**
-   ```python
-   preprocessor = Preprocessor(config_path="src/config.yaml")
-   X_processed, y_processed = preprocessor.run_preprocessing(df_after_eda)
+3. **Verify installation:**
+   ```bash
+   python -c "import pandas, scikit-learn, numpy; print('Environment ready!')"
    ```
 
-## Usage
+### Alternative: Using pip
 
-1. Install dependencies:
+1. **Create virtual environment:**
+   ```bash
+   python -m venv mlops_env
+   source mlops_env/bin/activate  # On Windows: mlops_env\Scripts\activate
+   ```
 
+2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-2. Run the pipeline:
-   ```bash
-   python src/main.py
-   ```
+## Quick Start
 
-## Testing
-
-Run tests using pytest:
+### Run the Complete Pipeline
 
 ```bash
-pytest tests/
+# Activate your environment
+conda activate mlops
+
+# Run the full pipeline
+python src/main.py
+
+# Or run it as a module
+python -m src.main
 ```
 
-## Logging
+### Run Individual Components
 
-The project implements comprehensive logging:
+```bash
+# Just EDA
+python -c "from src.eda.eda import EDAAnalyzer; eda = EDAAnalyzer(); eda.run_full_analysis(data)"
 
-- Main pipeline logs: `logs/main.log`
-- EDA logs: `logs/eda.log`
-- Preprocessing logs: `logs/preprocessing.log`
+# Just model training
+python -c "from src.model.trainer import ModelTrainer; trainer = ModelTrainer(); trainer.fit(X, y)"
+
+# Just inference
+python -c "from src.inference.predict import ModelPredictor; predictor = ModelPredictor(); predictor.load_model('path/to/model')"
+```
+
+## Module Documentation
+
+### 1. Data Loading (`src/data_loader/`)
+
+Handles data ingestion, validation, and splitting with robust error handling.
+
+#### Features
+- **Multi-source Support**: Local files, Google Drive links, URLs
+- **Automatic Validation**: Integrated data quality checks
+- **Smart Splitting**: Stratified train/validation/test splits
+- **Flexible Formats**: CSV, Excel, Parquet support
+
+#### Usage
+```python
+from src.data_loader.data_loader import DataLoader
+
+data_loader = DataLoader(config_path="src/config.yaml")
+df = data_loader.load_data()
+train, val, test = data_loader.split_data(df)
+data_loader.save_split_data(train, val, test)
+```
+
+#### Outputs
+- Split datasets in `data/processed/`
+- Loading logs in `logs/data_loader.log`
+- Data quality reports
+
+### 2. Data Validation (`src/validation/`)
+
+Comprehensive data quality assurance with multiple validation strategies.
+
+#### Components
+- **`data_validator.py`**: Full validation pipeline with cleaning
+- **`validator.py`**: Lightweight validation for CI/CD
+
+#### Features
+- **Schema Validation**: Column presence, types, constraints
+- **Quality Checks**: Missing values, outliers, distributions
+- **Target Analysis**: Class balance, target validity
+- **Automated Cleaning**: Configurable data cleaning strategies
+
+#### Usage
+```python
+from src.validation.data_validator import DataValidator
+
+validator = DataValidator(config_path="src/config.yaml")
+clean_data = validator.validate_and_clean(df, strategy='drop_columns')
+```
+
+#### Outputs
+- Validation reports in `logs/validation_report.json`
+- Cleaned datasets
+- Quality metrics and recommendations
+
+### 3. Exploratory Data Analysis (`src/eda/`)
+
+Automated comprehensive data analysis with rich visualizations.
+
+#### Features
+- **Statistical Analysis**: Descriptive statistics, distributions, correlations
+- **Target Analysis**: Class balance, target relationships
+- **Feature Analysis**: Univariate and bivariate analysis
+- **Missing Data Analysis**: Patterns and impact assessment
+- **Automated Visualizations**: 20+ plot types automatically generated
+
+#### Key Analyses
+- Data description and summary statistics
+- Target variable distribution and balance
+- Numerical feature distributions and outliers
+- Categorical feature analysis
+- Correlation matrices and feature relationships
+- Missing value patterns and heatmaps
+- Feature importance estimation
+
+#### Usage
+```python
+from src.eda.eda import EDAAnalyzer
+
+eda_analyzer = EDAAnalyzer(config_path="src/config.yaml")
+eda_report = eda_analyzer.run_full_analysis(df)
+```
+
+#### Outputs
+- Comprehensive analysis report
+- 20+ visualizations in `plots/eda/`
+- Analysis logs in `logs/eda.log`
+- Recommendations for preprocessing
+
+### 4. Preprocessing (`src/preprocessing/`)
+
+Production-ready data preprocessing pipeline with sklearn integration.
+
+#### Features
+- **Missing Value Handling**: Multiple imputation strategies
+- **Categorical Encoding**: One-hot, label, target encoding
+- **Numerical Scaling**: StandardScaler, MinMaxScaler, RobustScaler
+- **Outlier Treatment**: Detection and handling strategies
+- **Pipeline Persistence**: Save/load preprocessing pipelines
+
+#### Usage
+```python
+from src.preprocessing.preprocessor import Preprocessor
+
+preprocessor = Preprocessor(config_path="src/config.yaml")
+X_train, y_train = preprocessor.fit_transform(train)
+X_test, y_test = preprocessor.transform(test)
+preprocessor.save_pipeline("models/preprocessor.joblib")
+```
+
+#### Outputs
+- Preprocessed features and targets
+- Saved preprocessing pipeline
+- Preprocessing logs with transformation details
+
+### 5. Feature Engineering (`src/features/`)
+
+Advanced feature creation and selection for improved model performance.
+
+#### Features
+- **Automated Feature Creation**: Polynomial, interaction, statistical features
+- **Feature Selection**: Statistical tests, importance-based, correlation-based
+- **Domain-Specific Features**: Healthcare-specific feature engineering
+- **Feature Validation**: Importance scoring and selection
+- **Pipeline Integration**: Seamless integration with preprocessing
+
+#### Feature Types Created
+- **Statistical Features**: Mean, median, std, percentiles
+- **Interaction Features**: Feature combinations and ratios
+- **Polynomial Features**: Higher-order polynomial combinations
+- **Domain Features**: Healthcare-specific calculated features
+- **Temporal Features**: Age groups, admission patterns
+
+#### Usage
+```python
+from src.features.feature_engineering import FeatureEngineer
+
+engineer = FeatureEngineer(config_path="src/config.yaml")
+X_engineered, y = engineer.fit_transform(df, target_col='readmitted')
+```
+
+#### Outputs
+- Enhanced feature sets
+- Feature importance rankings
+- Feature engineering pipeline
+- Engineering logs and statistics
+
+### 6. Model Training (`src/model/`)
+
+Comprehensive model training with multiple algorithms and hyperparameter optimization.
+
+#### Supported Models
+- **Random Forest**: With grid search optimization
+- **Gradient Boosting**: XGBoost, LightGBM support
+- **Logistic Regression**: With regularization
+- **Support Vector Machine**: With kernel optimization
+- **Neural Networks**: Basic MLP support
+
+#### Features
+- **Hyperparameter Optimization**: Grid search with cross-validation
+- **Model Persistence**: Save/load trained models
+- **Feature Engineering Integration**: Automatic pipeline creation
+- **Performance Tracking**: Training metrics and validation scores
+- **Early Stopping**: Prevent overfitting
+
+#### Usage
+```python
+from src.model.trainer import ModelTrainer
+
+trainer = ModelTrainer(config_path="src/config.yaml")
+trainer.fit(X_train, y_train)
+model_path = trainer.save()
+```
+
+#### Outputs
+- Trained model artifacts in `models/`
+- Training logs with performance metrics
+- Hyperparameter optimization results
+- Model metadata and configuration
+
+### 7. Model Evaluation (`src/evaluation/`)
+
+Comprehensive model evaluation with detailed metrics and visualizations.
+
+#### Evaluation Metrics
+- **Classification Metrics**: Accuracy, Precision, Recall, F1-score
+- **Probabilistic Metrics**: ROC-AUC, PR-AUC, Brier Score
+- **Advanced Metrics**: Matthews Correlation, Balanced Accuracy
+- **Confusion Matrix**: Detailed classification analysis
+- **Probability Calibration**: Reliability diagrams
+
+#### Features
+- **ROC/PR Curves**: Performance visualization
+- **Model Comparison**: Compare against baseline models
+- **MLflow Integration**: Experiment tracking
+- **Comprehensive Reports**: JSON reports with all metrics
+- **Visualization Suite**: Automated evaluation plots
+
+#### Usage
+```python
+from src.evaluation.evaluator import ModelEvaluator
+
+evaluator = ModelEvaluator(config_path="src/config.yaml")
+results = evaluator.evaluate(y_true, y_pred, y_pred_proba)
+comparison = evaluator.compare_models(other_metrics)
+```
+
+#### Outputs
+- Detailed evaluation reports in `logs/evaluation_report.json`
+- ROC and PR curve visualizations
+- Confusion matrix plots
+- Model comparison results
+- MLflow experiment tracking
+
+### 8. Model Inference (`src/inference/`)
+
+Production-ready inference service with confidence scoring and batch processing.
+
+#### Features
+- **Single Predictions**: Individual sample prediction
+- **Batch Processing**: Efficient large dataset processing
+- **Confidence Scoring**: Prediction confidence analysis
+- **Probability Outputs**: Class probability estimates
+- **Model Loading**: Load saved models with preprocessing
+- **Input Validation**: Robust input data validation
+
+#### Inference Types
+- **Basic Prediction**: Simple class predictions
+- **Probability Prediction**: Class probability estimates
+- **Confidence Analysis**: Predictions with confidence scores
+- **Batch Inference**: Process large datasets efficiently
+
+#### Usage
+```python
+from src.inference.predict import ModelPredictor
+
+predictor = ModelPredictor(config_path="src/config.yaml")
+predictor.load_model("models/trained_model.joblib")
+
+# Single predictions
+predictions = predictor.predict(data)
+
+# Confidence analysis
+results = predictor.predict_with_confidence(data, confidence_threshold=0.8)
+
+# Batch processing
+batch_results = predictor.predict_batch(large_data, batch_size=1000)
+```
+
+#### Outputs
+- Prediction results with confidence scores
+- Batch processing summaries
+- Inference logs and performance metrics
+- Saved prediction results
 
 ## Configuration
 
-Configuration is managed through `src/config.yaml`:
+The entire pipeline is controlled through `src/config.yaml`:
 
-- Feature definitions
-- Preprocessing parameters
-- Logging settings
-- Model parameters
-- Feature engineering settings
-- Evaluation metrics
-- Logging configuration
+```yaml
+data:
+  raw_data_path: "data/raw/diabetic_readmission_data.csv"
+  processed_data_path: "data/processed"
+  train_size: 0.7
+  val_size: 0.15
+  test_size: 0.15
 
-# Code comments
+model:
+  type: "random_forest"
+  parameters:
+    n_estimators: 100
+    max_depth: 10
+    random_state: 42
 
-1. `data_loader.py` – Loads, splits, and saves data
-2. `data_validator.py` – Validates schema, types, completeness, and cleans the data
-3. `validator.py` – Lightweight validation for fast pre-checks (e.g., in CI)
+feature_engineering:
+  enable_polynomial_features: true
+  polynomial_degree: 2
+  enable_interaction_features: true
 
-The pipeline uses `config.yaml` to control paths, expectations, and logging.
+evaluation:
+  metrics: ["accuracy", "precision", "recall", "f1_score", "roc_auc"]
+  cross_validation_folds: 5
 
-## Scripts Overview
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+```
 
-### `data_loader.py`
+## Testing
 
-**Location:** `src/data_loader/data_loader.py`
+Comprehensive test suite with 95%+ code coverage:
 
-**Responsibilities:**
+```bash
+# Run all tests
+pytest
 
-- Load dataset from a local path or Google Drive link (via config)
-- Validate and clean the data (by calling `DataValidator`)
-- Split data into train/validation/test using config-defined ratios
-- Save processed outputs to defined paths
+# Run specific test modules
+pytest tests/test_data_loader.py
+pytest tests/test_evaluation.py
+pytest tests/test_inference.py
 
-**Key Features:**
+# Run with coverage
+pytest --cov=src tests/
 
-- Reads file type (`csv`, `excel`) from config
-- Logs every step and outcome
-- Drops nothing by itself – relies on the validator
-- Safe default fallback behavior (if configured)
+# Run tests verbosely
+pytest -v
+```
 
-### `data_validator.py`
+### Test Coverage
+- **Unit Tests**: Individual function testing
+- **Integration Tests**: Module interaction testing
+- **End-to-End Tests**: Full pipeline testing
+- **Mock Testing**: External dependency testing
+- **Error Handling**: Exception and edge case testing
 
-**Location:** `src/validation/data_validator.py`
+## Logging and Monitoring
 
-**Responsibilities:**
+Comprehensive logging system across all modules:
 
-- Validate schema, data types, and target distribution
-- Drop rows with missing values
-- Log issues, write full validation report to `logs/validation_report.json`
+### Log Files
+- `logs/main.log` - Main pipeline execution
+- `logs/data_loader.log` - Data loading operations
+- `logs/validation_report.json` - Data validation results
+- `logs/eda.log` - EDA analysis logs
+- `logs/preprocessing.log` - Preprocessing operations
+- `logs/feature_engineering.log` - Feature engineering logs
+- `logs/model_training.log` - Model training progress
+- `logs/evaluation_report.json` - Model evaluation results
+- `logs/inference_report.json` - Inference operations
 
-**Key Features:**
+### Monitoring Features
+- **Performance Metrics**: Execution time tracking
+- **Error Tracking**: Detailed error logging and stack traces
+- **Progress Indicators**: Visual progress bars and status updates
+- **Resource Usage**: Memory and computation monitoring
 
-- Uses fallback: treats `'age'` as `'age_group'` if needed
-- Entirely driven by `config.yaml`
-- Logs warnings and errors
-- Designed for full pipeline integration
+## Results and Artifacts
 
-### `validator.py`
+### Generated Artifacts
+- **Trained Models**: `models/trained_model.joblib`
+- **Preprocessing Pipelines**: `models/preprocessor.joblib`
+- **Feature Engineering Pipelines**: `models/feature_engineer.joblib`
+- **Evaluation Reports**: `logs/evaluation_report.json`
+- **Prediction Results**: `data/processed/inference_results.json`
 
-**Location:** `src/validation/validator.py`
+### Visualizations
+- **EDA Plots**: 20+ analysis visualizations in `plots/eda/`
+- **Model Performance**: ROC curves, confusion matrices in `plots/evaluation/`
+- **Feature Analysis**: Feature importance and correlation plots
 
-**Responsibilities:**
+## MLflow Integration
 
-- Lightweight validation for use in fast CI checks
-- Boolean-based: schema, types, missing values, target balance
-- No cleaning or mutation — just checks
+Optional MLflow integration for experiment tracking:
 
-**Key Features:**
+```bash
+# Start MLflow UI
+mlflow ui
 
-- Very fast and simple
-- Good for test suites or minimal CLI usage
-- Logs only issues, does not raise exceptions
+# View experiments at http://localhost:5000
+```
 
-## Tests Overview
+### Tracked Metrics
+- Model performance metrics
+- Hyperparameter configurations  
+- Training artifacts
+- Model comparison results
 
-Each script has a dedicated test suite under `tests/`.
+## Pipeline Execution Flow
 
-### `tests/test_data_loader.py`
+1. **Data Loading** → Load and validate raw data
+2. **Data Validation** → Quality checks and cleaning
+3. **EDA** → Comprehensive data analysis
+4. **Preprocessing** → Data cleaning and transformation
+5. **Feature Engineering** → Advanced feature creation
+6. **Model Training** → Train and optimize models
+7. **Model Evaluation** → Comprehensive performance analysis
+8. **Model Inference** → Production-ready predictions
+9. **Reporting** → Generate comprehensive reports
 
-**Tests the following:**
+## Contributing
 
-- Loading data from Google Drive (or fallback to mock file)
-- Splitting data into train/val/test with correct proportions
-- Saving datasets to correct config-defined paths
-- Using `tmp_path` to avoid real file system side effects
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass (`pytest`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
-### `tests/test_data_validation.py`
+## Performance Metrics
 
-**Tests the following:**
+The pipeline generates comprehensive performance metrics:
 
-- Cleans rows with missing values
-- Detects type mismatches and raises `TypeError`
-- Fails on missing required columns (`ValueError`)
-- Fails on target distribution imbalance
-- Passes full validation on clean data
+### Model Performance
+- **Accuracy**: Overall classification accuracy
+- **Precision/Recall**: Class-specific performance
+- **F1-Score**: Harmonic mean of precision and recall
+- **ROC-AUC**: Area under the ROC curve
+- **PR-AUC**: Area under the Precision-Recall curve
 
-### `tests/test_validator.py`
+### Pipeline Performance  
+- **Execution Time**: Time for each pipeline step
+- **Memory Usage**: Peak memory consumption
+- **Data Quality**: Missing value and outlier statistics
+- **Feature Importance**: Feature contribution rankings
 
-**Tests the following:**
+## License
 
-- Schema validation with fallback to `age` if `age_group` is missing
-- Detects missing columns and fails cleanly
-- Accepts correct numeric and categorical types
-- Detects type mismatches
-- Validates acceptable missing value ratios
-- Detects high-missing columns
-- Checks target distribution balance
-- Returns expected booleans from `validate_all()`
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- Built with scikit-learn, pandas, and MLflow
+- Follows MLOps best practices and patterns
+- Designed for production deployment and monitoring

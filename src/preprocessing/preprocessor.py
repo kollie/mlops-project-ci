@@ -301,141 +301,186 @@ class Preprocessor:
             raise
 
     def fit(self, data: pd.DataFrame, target_col: str = None) -> None:
-        """Fit the preprocessing pipeline on training data."""
+        """Fit the preprocessing pipeline on the data."""
         try:
-            # Get target column from config if not provided
-            if target_col is None:
-                target_col = self.config.get('features', {}).get('target_column', 'readmitted')
-            
-            self._target_column = target_col
-            
-            self.logger.info("🔧 Starting preprocessing pipeline fitting...")
-            
-            # Validate input
             if data.empty:
                 raise ValueError("Cannot fit on empty DataFrame")
-            if target_col not in data.columns:
-                raise KeyError(f"Target column '{target_col}' not found in data")
             
-            # Initialize report
+            if target_col is None:
+                target_col = self.config['features']['target_column']
+            
+            self.logger.info(f"🔧 Fitting preprocessing pipeline on data shape: {data.shape}")
+            
+            # Update report
             self.report = {
                 'timestamp': pd.Timestamp.now().isoformat(),
                 'original_shape': data.shape,
-                'target_column': target_col
+                'target_column': target_col,
+                'fitting_completed': False
             }
             
             # Handle missing values
-            data_clean = self._handle_missing_values(data)
+            data = self._handle_missing_values(data)
             
-            # Drop specified columns
-            drop_columns = self.config.get('features', {}).get('drop_columns', [])
-            if drop_columns:
-                self.logger.info(f"Dropping columns: {drop_columns}")
-                data_clean = data_clean.drop(columns=drop_columns, errors='ignore')
+            # Separate target and features
+            if target_col not in data.columns:
+                raise KeyError(f"Target column '{target_col}' not found in data")
             
-            # Get feature columns
-            numerical_features, categorical_features = self._get_feature_columns(data_clean)
-            self._numerical_features = numerical_features
-            self._categorical_features = categorical_features
+            y = data[target_col]
+            X = data.drop(columns=[target_col])
+            
+            # Get feature columns from actual data
+            numerical_features, categorical_features = self._get_feature_columns(X)
+            
+            self.logger.info(f"   Numerical features: {len(numerical_features)}")
+            self.logger.info(f"   Categorical features: {len(categorical_features)}")
             
             # Create and fit preprocessing pipeline
             self.preprocessor = self._create_preprocessing_pipeline(numerical_features, categorical_features)
-            
-            # Prepare data for fitting
-            X = data_clean.drop(columns=[target_col])
-            y = data_clean[target_col]
-            
-            # Fit the preprocessor
             self.preprocessor.fit(X)
-            self._update_feature_names_after_fit(numerical_features, categorical_features)
             
-            # Encode target
-            y_encoded = self._encode_target(y)
+            # Fit label encoder for target
+            self.label_encoder = LabelEncoder()
+            self.label_encoder.fit(y)
             
-            # Transform features for feature selection
-            X_transformed = self.preprocessor.transform(X)
+            # Apply preprocessing to get data for feature selection
+            X_processed = self.preprocessor.transform(X)
+            y_encoded = self.label_encoder.transform(y)
+            
+            # Set feature names from the fitted transformer
+            try:
+                feature_names = []
+                for name, transformer, columns in self.preprocessor.transformers:
+                    if name == 'num' and len(columns) > 0:
+                        feature_names.extend([f'num__{col}' for col in columns])
+                    elif name == 'cat' and len(columns) > 0:
+                        if hasattr(transformer, 'get_feature_names_out'):
+                            cat_names = transformer.get_feature_names_out(columns)
+                            feature_names.extend([f'cat__{name}' for name in cat_names])
+                        else:
+                            feature_names.extend([f'cat__{col}' for col in columns])
+                
+                # Ensure we have the right number of feature names
+                if len(feature_names) != X_processed.shape[1]:
+                    feature_names = [f'feature_{i}' for i in range(X_processed.shape[1])]
+                    
+                self._feature_names = feature_names
+                
+            except Exception as e:
+                self.logger.warning(f"Could not set feature names: {e}")
+                self._feature_names = [f'feature_{i}' for i in range(X_processed.shape[1])]
             
             # Apply feature selection
-            X_selected = self._select_features(X_transformed, y_encoded)
+            X_processed = self._select_features(X_processed, y_encoded)
             
-            # Update final report
-            self.report['final_shape'] = (X_selected.shape[0], X_selected.shape[1])
+            self.logger.info("✅ Preprocessing pipeline fitted successfully")
+            self.logger.info(f"   Final feature count: {X_processed.shape[1]}")
+            
+            # Update report
             self.report['fitting_completed'] = True
+            self.report['final_shape'] = (X_processed.shape[0], X_processed.shape[1])
+            self.report['numerical_features_count'] = len(numerical_features)
+            self.report['categorical_features_count'] = len(categorical_features)
             
             # Write report
             self._write_report()
             
-            self.logger.info("✅ Preprocessing pipeline fitted successfully!")
-            self.logger.info(f"Final feature shape: {X_selected.shape}")
-            
         except Exception as e:
-            self.logger.error(f"❌ Preprocessing fitting failed: {str(e)}")
-            self.report['fitting_failed'] = True
+            self.logger.error(f"❌ Error fitting preprocessing pipeline: {str(e)}")
+            self.report['fitting_completed'] = False
             self.report['error'] = str(e)
             self._write_report()
             raise
 
     def transform(self, data: pd.DataFrame, target_col: str = None) -> Tuple[pd.DataFrame, pd.Series]:
-        """Transform data using the fitted preprocessing pipeline."""
+        """Transform data using fitted preprocessor."""
         try:
             if self.preprocessor is None:
                 raise ValueError("Preprocessing pipeline not fitted yet. Call fit() first.")
             
-            # Get target column
-            if target_col is None:
-                target_col = self._target_column
-            
-            self.logger.info("🔄 Transforming data...")
-            
-            # Validate input
             if data.empty:
                 raise ValueError("Cannot transform empty DataFrame")
+            
+            if target_col is None:
+                target_col = self.config['features']['target_column']
+            
+            self.logger.info(f"🔄 Transforming data with shape: {data.shape}")
+            
+            # Handle missing values
+            data = self._handle_missing_values(data)
+            
+            # Separate target and features
             if target_col not in data.columns:
                 raise KeyError(f"Target column '{target_col}' not found in data")
             
-            # Handle missing values
-            data_clean = self._handle_missing_values(data)
+            y = data[target_col]
+            X = data.drop(columns=[target_col])
             
-            # Drop specified columns
-            drop_columns = self.config.get('features', {}).get('drop_columns', [])
-            if drop_columns:
-                data_clean = data_clean.drop(columns=drop_columns, errors='ignore')
+            # Get feature columns for this data (not from config)
+            numerical_features, categorical_features = self._get_feature_columns(X)
             
-            # Separate features and target
-            X = data_clean.drop(columns=[target_col])
-            y = data_clean[target_col]
+            # Apply preprocessing pipeline
+            X_processed = self.preprocessor.transform(X)
             
-            # Transform features
-            X_transformed = self.preprocessor.transform(X)
-            
-            # Apply feature selection if fitted
-            if self.feature_selector is not None:
-                X_transformed = self.feature_selector.transform(X_transformed)
+            # Get the actual feature names from the preprocessor
+            try:
+                # Get feature names from the fitted ColumnTransformer
+                feature_names = []
+                for name, transformer, columns in self.preprocessor.transformers:
+                    if name == 'num' and len(columns) > 0:
+                        # For numerical features, use original names
+                        feature_names.extend([f'num__{col}' for col in columns])
+                    elif name == 'cat' and len(columns) > 0:
+                        # For categorical features, get names from OneHotEncoder
+                        if hasattr(transformer, 'get_feature_names_out'):
+                            cat_names = transformer.get_feature_names_out(columns)
+                            feature_names.extend([f'cat__{name}' for name in cat_names])
+                        else:
+                            # Fallback for older sklearn versions
+                            feature_names.extend([f'cat__{col}' for col in columns])
+                
+                # If we still don't have the right number of feature names, create generic ones
+                if len(feature_names) != X_processed.shape[1]:
+                    feature_names = [f'feature_{i}' for i in range(X_processed.shape[1])]
+                    
+            except Exception as e:
+                self.logger.warning(f"Could not get feature names from transformer: {e}")
+                # Create generic feature names
+                feature_names = [f'feature_{i}' for i in range(X_processed.shape[1])]
             
             # Create DataFrame with proper feature names
-            feature_names = self.get_feature_names()
             X_df = pd.DataFrame(
-                X_transformed,
+                X_processed,
                 columns=feature_names,
                 index=data.index
             )
             
-            # Transform target
+            # Apply feature selection if fitted
+            if self.feature_selector is not None:
+                X_df = pd.DataFrame(
+                    self.feature_selector.transform(X_df),
+                    columns=[feature_names[i] for i in self.feature_selector.get_support(indices=True)],
+                    index=X_df.index
+                )
+            
+            # Encode target
             if self.label_encoder is not None:
-                y_transformed = pd.Series(
+                y_encoded = pd.Series(
                     self.label_encoder.transform(y),
-                    index=data.index,
-                    name=target_col
+                    name=target_col,
+                    index=y.index
                 )
             else:
-                y_transformed = y
+                y_encoded = y
             
-            self.logger.info(f"✅ Data transformed successfully. Shape: {X_df.shape}")
+            self.logger.info("✅ Data transformed successfully")
+            self.logger.info(f"   Features shape: {X_df.shape}")
+            self.logger.info(f"   Target shape: {y_encoded.shape}")
             
-            return X_df, y_transformed
+            return X_df, y_encoded
             
         except Exception as e:
-            self.logger.error(f"❌ Data transformation failed: {str(e)}")
+            self.logger.error(f"❌ Error transforming data: {str(e)}")
             raise
 
     def fit_transform(self, data: pd.DataFrame, target_col: str = None) -> Tuple[pd.DataFrame, pd.Series]:
