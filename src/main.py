@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.data_loader.data_loader import DataLoader
 from src.validation.data_validator import DataValidator
+from src.eda.eda import EDAAnalyzer
 
 def setup_logging():
     """Setup logging configuration."""
@@ -60,12 +61,34 @@ def main():
         clean_data = validator.validate_and_clean(df, strategy='drop_columns')
         logger.info(f"Data validation completed. Clean data shape: {clean_data.shape}")
         
-        # Future steps would go here:
-        # Step 4: EDA (when module exists)
-        # Step 5: Preprocessing (when module exists)
-        # Step 6: Feature engineering (when module exists)
-        # Step 7: Model training (when module exists)
-        # Step 8: Evaluation (when module exists)
+        # Step 5: Exploratory Data Analysis (EDA)
+        logger.info("Performing Exploratory Data Analysis (EDA)...")
+        eda_analyzer = EDAAnalyzer(config_path="src/config.yaml")
+        eda_report = eda_analyzer.run_full_analysis(clean_data)
+        logger.info(f"EDA completed successfully. Report sections: {list(eda_report.keys())}")
+        
+        # Log key EDA insights
+        if 'summary' in eda_report:
+            summary = eda_report['summary']
+            logger.info("📊 EDA Summary:")
+            logger.info(f"   Total features: {summary.get('total_features', 'N/A')}")
+            logger.info(f"   Numeric features: {summary.get('numeric_features', 'N/A')}")
+            logger.info(f"   Categorical features: {summary.get('categorical_features', 'N/A')}")
+            logger.info(f"   Missing data: {summary.get('missing_data_percentage', 'N/A')}%")
+        
+        if 'target_analysis' in eda_report and 'error' not in eda_report['target_analysis']:
+            target_analysis = eda_report['target_analysis']
+            logger.info("🎯 Target Analysis:")
+            logger.info(f"   Target column: {target_analysis.get('target_column', 'N/A')}")
+            logger.info(f"   Class distribution: {target_analysis.get('percentages', {})}")
+            logger.info(f"   Balanced: {target_analysis.get('class_balance', {}).get('is_balanced', 'N/A')}")
+
+                
+
+        # Step 6: Preprocessing (when module exists)
+        # Step 7: Feature engineering (when module exists)
+        # Step 8: Model training (when module exists)
+        # Step 9: Evaluation (when module exists)
         
         logger.info("Pipeline completed successfully")
         return {

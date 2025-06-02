@@ -1,315 +1,439 @@
-"""
-Exploratory Data Analysis (EDA) helper for the MLOps project test suite.
-"""
-
-from __future__ import annotations
-
-import logging
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional
-
-import numpy as np
 import pandas as pd
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
+import yaml
+import logging
+import os
+import json
+from pathlib import Path
+from typing import Dict, List
 
-__all__ = ["EDA"]
+class EDAAnalyzer:
+    """
+    Exploratory Data Analysis (EDA) analyzer for the MLOps pipeline.
+    
+    Performs comprehensive data analysis including distributions, correlations,
+    missing values analysis, and target analysis.
+    """
+    
+    def __init__(self, config_path: str = "src/config.yaml"):
+        self.config_path = config_path
+        self.config = self._load_config(config_path)
+        self.logger = self._setup_logging()
+        self.plots_dir = self._setup_plots_directory()
+        self.report = {}
+        
+        # Set plotting style and ensure non-interactive backend
+        matplotlib.use('Agg')
+        plt.style.use('default')  # Use default instead of seaborn-v0_8 for compatibility
+        plt.ioff()  # Turn off interactive mode
+        sns.set_palette("husl")
 
+    def _load_config(self, config_path: str) -> dict:
+        """Load configuration from YAML file."""
+        try:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            # Validate required config sections
+            required_sections = ['data', 'model', 'logging']
+            for section in required_sections:
+                if section not in config:
+                    raise ValueError(f"Missing required config section: {section}")
+            
+            return config
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Config file not found: {config_path}")
+        except yaml.YAMLError as e:
+            raise ValueError(f"Invalid YAML in config file: {e}")
 
-
-def _numeric_columns(df: pd.DataFrame) -> List[str]:
-    """Return the names of numeric columns in *df* (helper)."""
-    return df.select_dtypes(include=[np.number]).columns.tolist()
-
-
-
-class EDA:
-   
-    def __init__(self, log_file: str = "logs/eda.log", plots_dir: Optional[str] = None):
-        self._setup_logging(log_file)
-
-        base_dir = Path(log_file).expanduser().resolve().parent
-        self.plots_dir = Path(plots_dir).expanduser().resolve() if plots_dir else base_dir / "plots"
-        self.plots_dir.mkdir(parents=True, exist_ok=True)
-
-        self.dist_dir = self.plots_dir / "distributions"
-        self.dist_dir.mkdir(exist_ok=True)
-
-    # .................................................................. #
-    def _setup_logging(self, log_file: str) -> None:
-        log_path = Path(log_file)
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Configure root once – avoids duplicate messages when multiple
-        # instances are created inside pytest parametrisations.
-        if not logging.getLogger(__name__).handlers:
+    def _setup_logging(self):
+        """Setup logging configuration."""
+        try:
+            log_config = self.config.get('logging', {})
+            log_file = log_config.get('file', 'logs/eda.log').replace('main.log', 'eda.log')
+            log_level = log_config.get('level', 'INFO')
+            log_format = log_config.get('format', '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            
+            # Create logs directory if it doesn't exist
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            
+            # Configure logging
             logging.basicConfig(
-                level=logging.INFO,
-                format="%(asctime)s | %(levelname)8s | %(name)s | %(message)s",
-                filename=str(log_path),
+                level=getattr(logging, log_level.upper()),
+                format=log_format,
+                handlers=[
+                    logging.FileHandler(log_file),
+                    logging.StreamHandler()
+                ]
             )
-        self.logger = logging.getLogger(__name__)
+            
+            return logging.getLogger(__name__)
+        except Exception:
+            # Fallback logging
+            logging.basicConfig(level=logging.INFO)
+            return logging.getLogger(__name__)
 
-    def describe_dataframe(self, df: pd.DataFrame) -> Dict:
-        """Return an extended dictionary of descriptive statistics.
+    def _setup_plots_directory(self) -> Path:
+        """Setup plots directory structure."""
+        plots_dir = Path("plots")
+        plots_dir.mkdir(exist_ok=True)
+        
+        # Create subdirectories
+        (plots_dir / "distributions").mkdir(exist_ok=True)
+        (plots_dir / "correlations").mkdir(exist_ok=True)
+        (plots_dir / "target_analysis").mkdir(exist_ok=True)
+        
+        return plots_dir
 
-        The method returns *empty* structures instead of raising when *df* is
-        empty – the tests expect that behaviour.
-        """
-        if df.empty:
-            return {
-                "shape": df.shape,
-                "dtypes": {},
-                "summary": {},
-                "memory_usage": {},
-                "unique_values": {},
-                "skewness": {},
-                "kurtosis": {},
+    def _get_numeric_columns(self, data: pd.DataFrame) -> List[str]:
+        """Get list of numeric columns."""
+        return data.select_dtypes(include=[np.number]).columns.tolist()
+
+    def _get_categorical_columns(self, data: pd.DataFrame) -> List[str]:
+        """Get list of categorical columns."""
+        return data.select_dtypes(include=['object', 'category']).columns.tolist()
+
+    def describe_dataset(self, data: pd.DataFrame) -> Dict:
+        """Generate comprehensive dataset description."""
+        try:
+            if data.empty:
+                self.logger.warning("Empty dataset provided for description")
+                return {"error": "Empty dataset"}
+            
+            self.logger.info("Generating dataset description...")
+            
+            numeric_cols = self._get_numeric_columns(data)
+            categorical_cols = self._get_categorical_columns(data)
+            
+            description = {
+                "basic_info": {
+                    "shape": data.shape,
+                    "total_rows": len(data),
+                    "total_columns": len(data.columns),
+                    "memory_usage_mb": round(data.memory_usage(deep=True).sum() / 1024**2, 2)
+                },
+                "column_types": {
+                    "numeric_columns": len(numeric_cols),
+                    "categorical_columns": len(categorical_cols),
+                    "numeric_column_names": numeric_cols,
+                    "categorical_column_names": categorical_cols
+                },
+                "missing_values": {
+                    "total_missing": int(data.isnull().sum().sum()),
+                    "missing_by_column": data.isnull().sum().to_dict(),
+                    "missing_percentage": (data.isnull().sum() / len(data) * 100).round(2).to_dict()
+                }
             }
+            
+            # Add numeric statistics if numeric columns exist
+            if numeric_cols:
+                description["numeric_summary"] = data[numeric_cols].describe().to_dict()
+            
+            self.logger.info("✅ Dataset description completed")
+            return description
+            
+        except Exception as e:
+            self.logger.error(f"Error in dataset description: {str(e)}")
+            return {"error": str(e)}
 
-        stats: Dict[str, Dict] = {
-            "shape": df.shape,
-            "dtypes": df.dtypes.astype(str).to_dict(),
-            "summary": df.describe(include="all").to_dict(),
-            "memory_usage": df.memory_usage(deep=True).astype(int).to_dict(),
-            "unique_values": {c: int(df[c].nunique(dropna=True)) for c in df.columns},
-        }
+    def analyze_target_variable(self, data: pd.DataFrame, target_col: str = None) -> Dict:
+        """Analyze target variable distribution and characteristics."""
+        try:
+            # Get target column from config if not provided
+            if target_col is None:
+                target_col = self.config.get('features', {}).get('target_column', 'readmitted')
+            
+            if target_col not in data.columns:
+                raise KeyError(f"Target column '{target_col}' not found in data")
+            
+            self.logger.info(f"Analyzing target variable: {target_col}")
+            
+            # Basic target analysis
+            value_counts = data[target_col].value_counts()
+            percentages = (value_counts / len(data) * 100).round(2)
+            
+            analysis = {
+                "target_column": target_col,
+                "unique_values": list(data[target_col].unique()),
+                "value_counts": value_counts.to_dict(),
+                "percentages": percentages.to_dict(),
+                "missing_values": int(data[target_col].isnull().sum()),
+                "class_balance": {
+                    "is_balanced": percentages.min() > 30,  # Simple balance check
+                    "imbalance_ratio": round(percentages.max() / percentages.min(), 2)
+                }
+            }
+            
+            # Create target distribution plots
+            self._plot_target_distribution(data, target_col)
+            
+            self.logger.info("✅ Target variable analysis completed")
+            return analysis
+            
+        except Exception as e:
+            self.logger.error(f"Error in target analysis: {str(e)}")
+            return {"error": str(e)}
 
-        numeric_cols = _numeric_columns(df)
-        stats["skewness"] = df[numeric_cols].skew().to_dict()
-        stats["kurtosis"] = df[numeric_cols].kurtosis().to_dict()
-
-        self.logger.info("describe_dataframe executed.")
-        return stats
-
-    def analyze_target_distribution(self, df: pd.DataFrame, *, target_col: str = "readmitted") -> Dict:
-        if df.empty:
-            raise ValueError("Cannot analyze target distribution of an empty DataFrame")
-        if target_col not in df.columns:
-            raise KeyError(f"Target column '{target_col}' not found in DataFrame")
-
-        value_counts = df[target_col].value_counts(dropna=False)
-        percentages = value_counts / len(df) * 100
-
-        # Bar chart
-        plt.figure(figsize=(10, 6))
-        sns.countplot(x=target_col, data=df)
-        plt.title(f"Distribution of {target_col}")
-        plt.tight_layout()
-        plt.savefig(self.plots_dir / "target_distribution.png")
-        plt.close()
-
-        # Pie chart
-        plt.figure(figsize=(8, 8))
-        plt.pie(value_counts, labels=value_counts.index.astype(str), autopct="%1.1f%%")
-        plt.title(f"{target_col} Distribution")
-        plt.savefig(self.plots_dir / "target_distribution_pie.png")
-        plt.close()
-
-        self.logger.info("analyze_target_distribution finished.")
-        return {"value_counts": value_counts.to_dict(), "percentages": percentages.to_dict()}
-
-    def analyze_feature_distributions(self, df: pd.DataFrame) -> Dict[str, Dict[str, float]]:
-        if df.empty:
-            return {}
-
-        numeric_cols = _numeric_columns(df)
-        if not numeric_cols:
-            self.logger.warning("No numerical columns available for distribution analysis.")
-            return {}
-
-        stats: Dict[str, Dict[str, float]] = {}
-        for col in numeric_cols:
-            series = pd.to_numeric(df[col], errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
-            if series.empty:
-                continue
-
-            plt.figure(figsize=(10, 6))
-            sns.histplot(series, kde=True)
-            plt.title(f"Distribution of {col}")
+    def _plot_target_distribution(self, data: pd.DataFrame, target_col: str):
+        """Create target distribution plots."""
+        try:
+            # Bar plot
+            fig, ax = plt.subplots(figsize=(10, 6))
+            value_counts = data[target_col].value_counts()
+            sns.barplot(x=value_counts.index, y=value_counts.values, ax=ax)
+            ax.set_title(f'Distribution of {target_col}')
+            ax.set_xlabel(target_col)
+            ax.set_ylabel('Count')
+            plt.setp(ax.get_xticklabels(), rotation=45)
             plt.tight_layout()
-            plt.savefig(self.dist_dir / f"{col}_distribution.png")
-            plt.close()
+            plt.savefig(self.plots_dir / "target_analysis" / f"{target_col}_distribution.png", 
+                       dpi=300, bbox_inches='tight')
+            plt.close(fig)
+            
+            # Pie chart
+            fig, ax = plt.subplots(figsize=(8, 8))
+            ax.pie(value_counts.values, labels=value_counts.index, autopct='%1.1f%%', startangle=90)
+            ax.set_title(f'{target_col} Distribution')
+            plt.tight_layout()
+            plt.savefig(self.plots_dir / "target_analysis" / f"{target_col}_pie.png", 
+                       dpi=300, bbox_inches='tight')
+            plt.close(fig)
+            
+            self.logger.info(f"Target distribution plots saved for {target_col}")
+            
+        except Exception as e:
+            self.logger.error(f"Error creating target plots: {str(e)}")
 
-            stats[col] = {
-                "mean": float(series.mean()),
-                "std": float(series.std()),
-                "min": float(series.min()),
-                "max": float(series.max()),
-                "skew": float(series.skew()),
-                "kurtosis": float(series.kurtosis()),
+    def analyze_feature_distributions(self, data: pd.DataFrame) -> Dict:
+        """Analyze distributions of numeric features."""
+        try:
+            numeric_cols = self._get_numeric_columns(data)
+            
+            if not numeric_cols:
+                self.logger.warning("No numeric columns found for distribution analysis")
+                return {"error": "No numeric columns found"}
+            
+            self.logger.info(f"Analyzing distributions for {len(numeric_cols)} numeric features")
+            
+            distribution_stats = {}
+            
+            for col in numeric_cols:
+                # Calculate statistics
+                series = data[col].dropna()
+                if len(series) == 0:
+                    continue
+                    
+                stats = {
+                    "mean": float(series.mean()),
+                    "median": float(series.median()),
+                    "std": float(series.std()),
+                    "min": float(series.min()),
+                    "max": float(series.max()),
+                    "skewness": float(series.skew()),
+                    "kurtosis": float(series.kurtosis())
+                }
+                distribution_stats[col] = stats
+                
+                # Create distribution plot
+                fig, ax = plt.subplots(figsize=(10, 6))
+                sns.histplot(series, kde=True, ax=ax)
+                ax.set_title(f'Distribution of {col}')
+                ax.set_xlabel(col)
+                ax.set_ylabel('Frequency')
+                plt.tight_layout()
+                plt.savefig(self.plots_dir / "distributions" / f"{col}_distribution.png", 
+                           dpi=300, bbox_inches='tight')
+                plt.close(fig)
+            
+            self.logger.info("✅ Feature distribution analysis completed")
+            return distribution_stats
+            
+        except Exception as e:
+            self.logger.error(f"Error in feature distribution analysis: {str(e)}")
+            return {"error": str(e)}
+    def analyze_correlations(self, data: pd.DataFrame, target_col: str = None) -> Dict:
+        """Analyze correlations between features and with target variable."""
+        try:
+            # Get target column from config if not provided
+            if target_col is None:
+                target_col = self.config.get('features', {}).get('target_column', 'readmitted')
+            
+            numeric_cols = self._get_numeric_columns(data)
+            
+            if len(numeric_cols) < 2:
+                self.logger.warning("Insufficient numeric columns for correlation analysis")
+                return {"error": "Insufficient numeric columns"}
+            
+            self.logger.info("Analyzing feature correlations")
+            
+            # Calculate correlation matrix
+            correlation_matrix = data[numeric_cols].corr()
+            
+            # Create correlation heatmap
+            fig, ax = plt.subplots(figsize=(12, 10))
+            sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, 
+                       square=True, linewidths=0.5, ax=ax)
+            ax.set_title('Feature Correlation Matrix')
+            plt.tight_layout()
+            plt.savefig(self.plots_dir / "correlations" / "correlation_heatmap.png", 
+                       dpi=300, bbox_inches='tight')
+            plt.close(fig)
+            
+            # Analyze correlations with target if target is numeric
+            target_correlations = {}
+            if target_col in data.columns:
+                if target_col in numeric_cols:
+                    target_corr = correlation_matrix[target_col].drop(target_col).sort_values(key=abs, ascending=False)
+                    target_correlations = target_corr.to_dict()
+                    
+                    # Plot top correlations with target
+                    top_corr = target_corr.head(10)
+                    fig, ax = plt.subplots(figsize=(10, 8))
+                    sns.barplot(x=top_corr.values, y=top_corr.index, ax=ax)
+                    ax.set_title(f'Top Correlations with {target_col}')
+                    ax.set_xlabel('Correlation Coefficient')
+                    plt.tight_layout()
+                    plt.savefig(self.plots_dir / "correlations" / f"top_correlations_{target_col}.png", 
+                               dpi=300, bbox_inches='tight')
+                    plt.close(fig)
+            
+            analysis = {
+                "correlation_matrix": correlation_matrix.to_dict(),
+                "target_correlations": target_correlations,
+                "high_correlations": self._find_high_correlations(correlation_matrix)
             }
-
-        self.logger.info("analyze_feature_distributions finished.")
-        return stats
-
-    def analyze_correlations(self, df: pd.DataFrame, *, target_col: str = "readmitted") -> pd.DataFrame:
-        if df.empty:
-            raise ValueError("Cannot analyze correlations of an empty DataFrame")
-        numeric_cols = _numeric_columns(df)
-        if not numeric_cols:
-            raise ValueError("No numerical columns found for correlation analysis")
-        if target_col not in df.columns:
-            raise KeyError(f"Target column '{target_col}' not found in DataFrame")
-
-        # Create a copy with only numeric columns and target
-        helper = df[numeric_cols + [target_col]].copy()
+            
+            self.logger.info("✅ Correlation analysis completed")
+            return analysis
+            
+        except Exception as e:
+            self.logger.error(f"Error in correlation analysis: {str(e)}")
+            return {"error": str(e)}
+    def _find_high_correlations(self, corr_matrix: pd.DataFrame, threshold: float = 0.8) -> Dict:
+        """Find pairs of features with high correlation."""
+        high_corr_pairs = {}
         
-        # Convert target to numeric if needed
-        if not pd.api.types.is_numeric_dtype(helper[target_col]):
-            helper[target_col] = pd.factorize(helper[target_col])[0]
-
-        # Calculate correlations
-        corr_matrix = helper.corr()
-
-        # Full heat‑map
-        plt.figure(figsize=(12, 8))
-        sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", center=0)
-        plt.title("Feature Correlation Matrix")
-        plt.tight_layout()
-        plt.savefig(self.plots_dir / "correlation_heatmap.png")
-        plt.close()
-
-        # Top correlations with target (exclude the diagonal)
-        target_corr = corr_matrix[target_col].drop(target_col).sort_values(ascending=False).head(10)
-        plt.figure(figsize=(10, 6))
-        sns.barplot(x=target_corr.values, y=target_corr.index)
-        plt.title("Top feature correlations with target")
-        plt.xlabel("Correlation coefficient")
-        plt.tight_layout()
-        plt.savefig(self.plots_dir / "top_correlations.png")
-        plt.close()
-
-        self.logger.info("analyze_correlations finished.")
-        return corr_matrix
-
-    # ------------------------------------------------------------------ #
-    def analyze_class_imbalance(self, df: pd.DataFrame, *, target_col: str = "readmitted") -> Dict:
-        if df.empty:
-            raise ValueError("Cannot analyze class imbalance of an empty DataFrame")
-        if target_col not in df.columns:
-            raise KeyError(f"Target column '{target_col}' not found in DataFrame")
-
-        counts = df[target_col].value_counts(dropna=False)
-        ratios = counts / len(df)
-        imbalance_ratio = float(counts.max() / max(counts.min(), 1))
-
-        results = {
-            "class_counts": counts.astype(int).to_dict(),
-            "class_ratios": ratios.to_dict(),
-            "n_classes": int(counts.size),
-            "imbalance_ratio": imbalance_ratio,
-        }
-        self.logger.info("analyze_class_imbalance finished.")
-        return results
-
-    def find_missing_values(self, df: pd.DataFrame) -> Dict[str, Dict[str, int]]:
-        """Find missing values in the DataFrame."""
-        if df.empty:
-            return {"nan_values": {}, "question_mark_values": {}}
-
-        # Find actual NaN values
-        nan_counts = df.isna().sum()
-        nan_cols = nan_counts[nan_counts > 0].astype(int)
+        for i in range(len(corr_matrix.columns)):
+            for j in range(i+1, len(corr_matrix.columns)):
+                col1, col2 = corr_matrix.columns[i], corr_matrix.columns[j]
+                corr_value = corr_matrix.iloc[i, j]
+                
+                if abs(corr_value) > threshold:
+                    high_corr_pairs[f"{col1}_vs_{col2}"] = round(corr_value, 3)
         
-        # Find '?' placeholders
-        q_cols = {}
-        for col in df.columns:
-            # Check for exact '?' values
-            q_count = (df[col].astype(str) == "?").sum()
-            if q_count > 0:
-                q_cols[col] = int(q_count)
+        return high_corr_pairs
 
-        missing_values = {
-            "nan_values": nan_cols.to_dict(),
-            "question_mark_values": q_cols
+    def analyze_missing_values(self, data: pd.DataFrame) -> Dict:
+        """Comprehensive missing values analysis."""
+        try:
+            self.logger.info("Analyzing missing values")
+            
+            missing_summary = data.isnull().sum()
+            missing_percentage = (missing_summary / len(data) * 100).round(2)
+            
+            analysis = {
+                "total_missing_values": int(missing_summary.sum()),
+                "columns_with_missing": int((missing_summary > 0).sum()),
+                "missing_by_column": missing_summary[missing_summary > 0].to_dict(),
+                "missing_percentage": missing_percentage[missing_percentage > 0].to_dict(),
+                "rows_with_missing": int(data.isnull().any(axis=1).sum()),
+                "complete_rows": int((~data.isnull().any(axis=1)).sum())
+            }
+            
+            # Create missing values heatmap if there are missing values
+            if analysis["total_missing_values"] > 0:
+                fig, ax = plt.subplots(figsize=(12, 8))
+                sns.heatmap(data.isnull(), cbar=True, yticklabels=False, cmap='viridis', ax=ax)
+                ax.set_title('Missing Values Heatmap')
+                plt.tight_layout()
+                plt.savefig(self.plots_dir / "missing_values_heatmap.png", 
+                           dpi=300, bbox_inches='tight')
+                plt.close(fig)
+            
+            self.logger.info("✅ Missing values analysis completed")
+            return analysis
+            
+        except Exception as e:
+            self.logger.error(f"Error in missing values analysis: {str(e)}")
+            return {"error": str(e)}
+            
+    def run_full_analysis(self, data: pd.DataFrame, target_col: str = None) -> Dict:
+        """Run comprehensive EDA analysis on the dataset."""
+        self.logger.info("🔍 Starting comprehensive EDA analysis...")
+        
+        # Initialize report
+        self.report = {
+            "timestamp": pd.Timestamp.now().isoformat(),
+            "dataset_shape": data.shape
         }
         
-        self.logger.info(f"Missing value analysis:\n{missing_values}")
-        return missing_values
-
-    def handle_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
-        if df.empty:
-            return df.copy()
-
-        df = df.copy().replace("?", np.nan)
-
-        # Numeric columns
-        for col in _numeric_columns(df):
-            median = df[col].median()
-            df[col] = df[col].fillna(0 if pd.isna(median) else median)
-
-        # Categorical / object columns
-        for col in df.select_dtypes(exclude=[np.number]).columns:
-            if df[col].isna().any():
-                mode_series = df[col].mode(dropna=True)
-                replacement = mode_series.iloc[0] if not mode_series.empty else "Unknown"
-                df[col] = df[col].fillna(replacement)
-
-        self.logger.info("handle_missing_values finished.")
-        return df
-
-    def remove_low_importance_columns(
-        self, df: pd.DataFrame, *, target_col: str = "readmitted", threshold: float = 0.1
-    ) -> Tuple[pd.DataFrame, List[str]]:
-        if df.empty:
-            raise ValueError("Cannot remove columns from an empty DataFrame")
-        if target_col not in df.columns:
-            raise KeyError(f"Target column '{target_col}' not found in DataFrame")
-
-        numeric_cols = _numeric_columns(df)
-        if not numeric_cols:
-            self.logger.warning("No numerical columns available for importance analysis.")
-            return df.copy(), []
-
-        helper = df[numeric_cols + [target_col]].copy()
-        if not pd.api.types.is_numeric_dtype(helper[target_col]):
-            helper[target_col] = pd.factorize(helper[target_col])[0]
-
-        correlations = helper[numeric_cols].corrwith(helper[target_col]).abs()
-        important_cols = correlations[correlations > threshold].index.tolist()
-
-        cols_to_keep = important_cols + [target_col]
-        removed_cols = [c for c in df.columns if c not in cols_to_keep]
-
-        self.logger.info("remove_low_importance_columns finished | %d removed", len(removed_cols))
-        return df[cols_to_keep].copy(), removed_cols
-
-    def run_analysis(self, df: pd.DataFrame, *, target_col: str = "readmitted") -> pd.DataFrame:
-        if df.empty:
-            raise ValueError("Cannot run analysis on an empty DataFrame")
-
-        self.logger.info("---- EDA pipeline start ----")
-
-        # 1. Summary – errors here are unexpected, so let them surface.
-        self.describe_dataframe(df)
-
-        # 2. Target distribution – expected to work if target exists.
-        self.analyze_target_distribution(df, target_col=target_col)
-
-        # 3. Feature distributions – safe for any df (returns early for no numerics).
-        self.analyze_feature_distributions(df)
-
-        # 4. Correlations – may raise if no numeric columns.  Catch + log so the
-        #    rest of the pipeline still executes (tests expect that).
         try:
-            self.analyze_correlations(df, target_col=target_col)
-        except (ValueError, KeyError) as exc:
-            self.logger.warning("Correlation analysis skipped: %s", exc)
-
-        # 5. Class imbalance – safe and always computed.
-        self.analyze_class_imbalance(df, target_col=target_col)
-
-        # 6. Missing‑value handling – returns cleaned frame.
-        df_processed = self.handle_missing_values(df)
-
-        # 7. Remove low‑importance numeric features – never fatal.
+            # Check for empty dataset early and raise exception
+            if data.empty:
+                error_msg = "Cannot perform EDA analysis on empty dataset"
+                self.logger.error(error_msg)
+                self.report["analysis_failed"] = True
+                self.report["error"] = error_msg
+                self._write_report()
+                raise ValueError(error_msg)
+            
+            # Get target column from config if not provided
+            if target_col is None:
+                target_col = self.config.get('features', {}).get('target_column', 'readmitted')
+            
+            # Run all analyses
+            self.report["dataset_description"] = self.describe_dataset(data)
+            self.report["target_analysis"] = self.analyze_target_variable(data, target_col)
+            self.report["feature_distributions"] = self.analyze_feature_distributions(data)
+            self.report["correlation_analysis"] = self.analyze_correlations(data, target_col)
+            self.report["missing_values_analysis"] = self.analyze_missing_values(data)
+            
+            # Summary statistics
+            self.report["summary"] = {
+                "total_features": len(data.columns),
+                "numeric_features": len(self._get_numeric_columns(data)),
+                "categorical_features": len(self._get_categorical_columns(data)),
+                "missing_data_percentage": round((data.isnull().sum().sum() / data.size) * 100, 2),
+                "analysis_completed": True
+            }
+            
+            # Write report
+            self._write_report()
+            
+            self.logger.info("✅ Comprehensive EDA analysis completed successfully!")
+            return self.report
+            
+        except Exception as e:
+            self.logger.error(f"❌ EDA analysis failed: {str(e)}")
+            self.report["analysis_failed"] = True
+            self.report["error"] = str(e)
+            self._write_report()
+            raise
+        
+    def _write_report(self):
+        """Write EDA report to file."""
         try:
-            df_processed, _ = self.remove_low_importance_columns(
-                df_processed, target_col=target_col
-            )
-        except (ValueError, KeyError) as exc:
-            self.logger.warning("Low‑importance pruning skipped: %s", exc)
+            report_dir = Path("logs")
+            report_dir.mkdir(exist_ok=True)
+            
+            report_file = report_dir / "eda_report.json"
+            with open(report_file, "w") as f:
+                json.dump(self.report, f, indent=2, default=str)
+                
+            self.logger.info(f"EDA report written to: {report_file}")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to write EDA report: {str(e)}")
 
-        self.logger.info("---- EDA pipeline end ----")
-        return df_processed.copy()
+if __name__ == "__main__":
+    """Demonstrate EDAAnalyzer functionality."""
+    print("EDAAnalyzer module loaded successfully.")
+    print("Usage examples:")
+    print("  from src.eda.eda import EDAAnalyzer")
+    print("  eda = EDAAnalyzer()")
+    print("  report = eda.run_full_analysis(data)")
+    print("  target_analysis = eda.analyze_target_variable(data, 'target_column')")

@@ -33,7 +33,7 @@ class DataLoader:
         """Setup logging configuration."""
         try:
             log_config = self.config.get('logging', {})
-            log_file = log_config.get('file', 'logs/module.log')
+            log_file = log_config.get('file', 'logs/data_loader.log')
             log_level = log_config.get('level', 'INFO')
             log_format = log_config.get('format', '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
             
