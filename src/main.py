@@ -2,12 +2,12 @@ import logging
 import sys
 import os
 from pathlib import Path
-import yaml
 
 # Add project root to path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.data_loader.data_loader import DataLoader
+from src.validation.data_validator import DataValidator
 
 def setup_logging():
     """Setup logging configuration."""
@@ -28,17 +28,6 @@ def setup_logging():
     )
     return logging.getLogger(__name__)
 
-def load_config(config_path: str = "src/config.yaml") -> dict:
-    """Load configuration from yaml file."""
-    try:
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-        return config
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
-    except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML in configuration file: {e}")
-
 def main():
     """Main function to run the data processing pipeline."""
     # Setup logging
@@ -46,13 +35,12 @@ def main():
     logger.info("Starting data processing pipeline...")
     
     try:
-        # Load configuration
-        config = load_config()
-        logger.info("Configuration loaded successfully")
-        
         # Step 1: Load data
-        logger.info("Loading data...")
+        logger.info("Initializing DataLoader...")
         data_loader = DataLoader(config_path="src/config.yaml")
+        logger.info("DataLoader initialized successfully")
+        
+        logger.info("Loading data...")
         df = data_loader.load_data()
         logger.info(f"Data loaded successfully. Shape: {df.shape}")
         
@@ -65,6 +53,12 @@ def main():
         logger.info("Saving split datasets...")
         data_loader.save_split_data(train, val, test)
         logger.info("Split datasets saved successfully")
+
+        # Step 4: Validate and clean data
+        logger.info("Validating and cleaning data...")
+        validator = DataValidator(config_path="src/config.yaml")
+        clean_data = validator.validate_and_clean(df, strategy='drop_columns')
+        logger.info(f"Data validation completed. Clean data shape: {clean_data.shape}")
         
         # Future steps would go here:
         # Step 4: EDA (when module exists)

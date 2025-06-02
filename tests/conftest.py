@@ -6,7 +6,7 @@ from pathlib import Path
 def setup_test_environment():
     """Setup test environment before each test."""
     # Create necessary directories
-    directories = ['logs', 'plots', 'data/raw', 'data/processed', 'data/interim']
+    directories = ['logs', 'plots', 'data/raw', 'data/processed']
     for directory in directories:
         Path(directory).mkdir(parents=True, exist_ok=True)
     

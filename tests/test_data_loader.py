@@ -6,6 +6,10 @@ import os
 import tempfile
 import shutil
 from pathlib import Path
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from src.data_loader.data_loader import DataLoader
 
 
@@ -196,7 +200,7 @@ class TestDataLoader:
         # Check files exist
         assert Path(loader.config['data']['train_data_path']).exists()
         assert Path(loader.config['data']['validation_data_path']).exists()
-        assert Path(loader.config['data']['test_data_path']).joinpath("test.csv").exists()
+        assert Path(loader.config['data']['test_data_path']).exists()
         
         # Verify saved data
         saved_train = pd.read_csv(loader.config['data']['train_data_path'])
@@ -231,4 +235,4 @@ class TestDataLoader:
         # Verify all files exist
         assert Path(loader.config['data']['train_data_path']).exists()
         assert Path(loader.config['data']['validation_data_path']).exists()
-        assert Path(loader.config['data']['test_data_path']).joinpath("test.csv").exists()
+        assert Path(loader.config['data']['test_data_path']).exists()
