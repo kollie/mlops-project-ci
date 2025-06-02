@@ -148,7 +148,6 @@ features:
     - metformin-pioglitazone
     - change
     - diabetesMed
-    - readmitted
   numerical_features:
     - time_in_hospital
     - num_lab_procedures

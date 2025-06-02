@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.data_loader.data_loader import DataLoader
 from src.validation.data_validator import DataValidator
 from src.eda.eda import EDAAnalyzer
+from src.preprocessing.preprocessor import Preprocessor
 
 def setup_logging():
     """Setup logging configuration."""
@@ -83,9 +84,19 @@ def main():
             logger.info(f"   Class distribution: {target_analysis.get('percentages', {})}")
             logger.info(f"   Balanced: {target_analysis.get('class_balance', {}).get('is_balanced', 'N/A')}")
 
-                
+        # Step 6: Preprocessing
+        logger.info("Preprocessing training data...")
+        preprocessor = Preprocessor(config_path="src/config.yaml")
+        X_train, y_train = preprocessor.fit_transform(train)
+        logger.info(f"Training data preprocessed. Shape: {X_train.shape}")
 
-        # Step 6: Preprocessing (when module exists)
+        # Transform validation and test sets
+        X_val, y_val = preprocessor.transform(val)
+        X_test, y_test = preprocessor.transform(test)
+
+        # Save the fitted preprocessor
+        preprocessor.save_pipeline("models/preprocessor.joblib")
+        
         # Step 7: Feature engineering (when module exists)
         # Step 8: Model training (when module exists)
         # Step 9: Evaluation (when module exists)

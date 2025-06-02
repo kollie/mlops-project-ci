@@ -34,6 +34,7 @@ env/
 # Project specific
 logs/*
 plots/
+models/
 *.log
 *.joblib
 
