@@ -1,790 +1,622 @@
-
 """
-feature_engineering_refactored.py
+Feature Engineering Module for MLOps Project.
 
-Advanced feature engineering using scikit-learn compatible transformers.
-Structured for integration in MLOps pipelines.
+Handles advanced feature creation and selection following the same patterns 
+as other modules in the pipeline.
 """
 
 import pandas as pd
 import numpy as np
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.feature_selection import SelectKBest, f_classif
-import logging
 import yaml
-from typing import List, Tuple, Dict, Any
+import logging
+import os
+import json
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.preprocessing import LabelEncoder
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
-class BaseFeatureEngineer(BaseEstimator, TransformerMixin):
-    def __init__(self, config_path="src/config.yaml"):
+class FeatureEngineer:
+    """
+    Feature engineering pipeline for the MLOps project.
+    
+    Creates new features and applies feature selection following the same
+    patterns as other modules in the pipeline.
+    """
+    
+    def __init__(self, config_path: str = "src/config.yaml"):
         self.config_path = config_path
-        self.config = self._load_config()
-        self._setup_logging()
+        self.config = self._load_config(config_path)
+        self.logger = self._setup_logging()
+        self.report = {}
+        
+        # Feature selection components
+        self.feature_selector: Optional[SelectKBest] = None
+        self.selected_features: List[str] = []
+        self.original_features: List[str] = []
+        self.engineered_features: List[str] = []
+        
+        # Categorical encoding components
+        self.label_encoders: Dict[str, LabelEncoder] = {}
 
-    def _load_config(self):
+    def _load_config(self, config_path: str) -> dict:
+        """Load configuration from YAML file."""
         try:
-            with open(self.config_path, 'r') as f:
-                return yaml.safe_load(f)
-        except Exception as e:
-            logging.error(f"Failed to load config from {self.config_path}: {e}")
-            raise
-
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            # Validate required config sections
+            required_sections = ['data', 'model', 'logging', 'features']
+            for section in required_sections:
+                if section not in config:
+                    raise ValueError(f"Missing required config section: {section}")
+            
+            return config
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Config file not found: {config_path}")
+        except yaml.YAMLError as e:
+            raise ValueError(f"Invalid YAML in config file: {e}")
 
     def _setup_logging(self):
-        if not logging.getLogger().hasHandlers():
-            logging.basicConfig(
-              level=self.config['logging']['level'],
-              format=self.config['logging']['format'],
-              filename=self.config['logging']['file']
-            )
-        self.logger = logging.getLogger(__name__)
-
-    def fit(self, X, y=None):
-        return self
-
-
-class AgeGroupTransformer(BaseFeatureEngineer):
-
-    """
-    Adds an 'age_group' column: binned version of the continuous 'age' feature.
-
-    Clinical motivation:
-    - Grouping patient age into ranges captures non-linear effects.
-    - Improves model interpretability and allows categorical treatment of age bands.
-
-    Configuration:
-    - Uses 'age_bins' and 'age_labels' defined in config.yaml under 'features'.
-
-    Output:
-    - Adds a new column 'age_group' to the dataset as a categorical feature.
-
-    Usage:
-        pipeline = Pipeline([
-            ('AgeGroup', AgeGroupTransformer(config_path='src/config.yaml')),
-            ...
-        ])
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'AgeGroupTransformer':
-        return self
-    
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        if 'age' not in X.columns:
-            self.logger.error("'age' column is missing from input data.")
-            raise ValueError("'age' column is required to create 'age_group'.")
-
-        if 'age_group' in X.columns:
-            self.logger.warning("'age_group' column already exists and will be overwritten.")
-
-        X['age'] = pd.to_numeric(X['age'], errors='coerce')
-
-        X['age_group'] = pd.cut(
-            X['age'],
-            bins=self.config['features']['age_bins'],
-            labels=self.config['features']['age_labels']
-        )
-
-        self.logger.info("Created 'age_group' feature using age_bins and labels from config.yaml.")
-        return X
-
-class LengthOfStayGroupTransformer(BaseFeatureEngineer):
-
-    """
-    Adds a 'length_of_stay_group' column: categorized version of 'time_in_hospital'.
-
-    Clinical motivation:
-    - The duration of hospital stay is a strong indicator of patient severity and resource use.
-    - Grouping this value helps capture patterns while reducing model variance and overfitting.
-
-    Configuration:
-    - Uses 'los_bins' and 'los_labels' defined in config.yaml under 'features'.
-
-    Output:
-    - Adds a new column 'length_of_stay_group' to the dataset as a categorical feature.
-
-    Usage:
-        pipeline = Pipeline([
-            ('LengthOfStayGroup', LengthOfStayGroupTransformer(config_path='src/config.yaml')),
-            ...
-        ])
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'LengthOfStayGroupTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        if 'time_in_hospital' not in X.columns:
-            self.logger.error("'time_in_hospital' column is missing from input data.")
-            raise ValueError("'time_in_hospital' column is required to create 'length_of_stay_group'.")
-
-        if 'length_of_stay_group' in X.columns:
-            self.logger.warning("'length_of_stay_group' column already exists and will be overwritten.")
-
-        X['time_in_hospital'] = pd.to_numeric(X['time_in_hospital'], errors='coerce')
-
-        X['length_of_stay_group'] = pd.cut(
-            X['time_in_hospital'],
-            bins=self.config['features']['los_bins'],
-            labels=self.config['features']['los_labels']
-        )
-
-        self.logger.info("Created 'length_of_stay_group' feature using los_bins and los_labels from config.yaml.")
-        return X
-    
-class ComorbidityTransformer(BaseFeatureEngineer):
-    
-    """
-    Adds a 'num_conditions' feature that combines multiple indicators of comorbidity:
-    - number_diagnoses
-    - number_inpatient
-    - number_outpatient
-    - number_emergency (read from config.yaml)
-
-    Clinical motivation:
-    - Aggregates comorbidity and prior healthcare usage into a single interpretable metric.
-    - Higher values suggest complex patients with increased risk of readmission.
-
-    Output:
-    - Adds a new column 'num_conditions' to the dataset.
-
-    Usage:
-        pipeline = Pipeline([
-            ('Comorbidity', ComorbidityTransformer(config_path='src/config.yaml')),
-            ...
-        ])
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'ComorbidityTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-        required_columns = self.config['features']['comorbidity_columns']
-
-        missing = [col for col in required_columns if col not in X.columns]
-        if missing:
-            self.logger.error(f"Missing columns for ComorbidityTransformer: {missing}")
-            raise ValueError(f"The following required columns are missing: {missing}")
-
-        if 'num_conditions' in X.columns:
-            self.logger.warning("'num_conditions' column already exists and will be overwritten.")
-
-        X['num_conditions'] = X[required_columns].apply(pd.to_numeric, errors='coerce').sum(axis=1)
-
-        self.logger.info("Created 'num_conditions' feature by combining columns from config.yaml.")
-        return X
-
-class PreviousVisitsTransformer(BaseFeatureEngineer):
-    """
-    Adds a 'total_prev_visits' feature combining:
-    - number_inpatient
-    - number_outpatient
-    - number_emergency (read from config.yaml)
-
-    Clinical motivation:
-    - Captures the total frequency of prior hospital interactions.
-    - Patients who frequently visit emergency, outpatient or inpatient services are often unstable, poorly managed, or chronically ill.
-    - This variable serves as a proxy for healthcare utilization burden.
-
-    Why it complements 'num_conditions':
-    - 'num_conditions' includes number_diagnoses, introducing a clinical component.
-    - 'total_prev_visits' isolates the operational side: how often the patient actually uses the system, regardless of diagnosis count.
-    - Thus, even if correlated, both capture **different aspects of risk**: clinical complexity vs. system dependency.
-    - Retaining both enables models to learn richer interactions (e.g., frequent visits with few diagnoses might imply misdiagnosed or poorly managed cases).
-
-    Output:
-    - Adds a new column 'total_prev_visits' to the dataset.
-
-    Usage:
-        pipeline = Pipeline([
-            ('PreviousVisits', PreviousVisitsTransformer(config_path='src/config.yaml')),
-            ...
-        ])
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'PreviousVisitsTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-        required_columns = self.config['features']['previous_visits_columns']
-
-        missing = [col for col in required_columns if col not in X.columns]
-        if missing:
-            self.logger.error(f"Missing columns for PreviousVisitsTransformer: {missing}")
-            raise ValueError(f"The following required columns are missing: {missing}")
-
-        if 'total_prev_visits' in X.columns:
-            self.logger.warning("'total_prev_visits' column already exists and will be overwritten.")
-
-        X['total_prev_visits'] = X[required_columns].apply(pd.to_numeric, errors='coerce').sum(axis=1)
-
-        self.logger.info("Created 'total_prev_visits' feature using columns from config.yaml.")
-        return X
-
-class MedicationIntensityTransformer(BaseFeatureEngineer):
-    """
-    Adds a 'medications_per_day' feature:
-    - Calculated as: num_medications / time_in_hospital
-
-    Clinical motivation:
-    - Captures the intensity of pharmacological treatment per hospital day.
-    - High values may indicate acute complexity or polypharmacy.
-    - Low values could indicate treatment abandonment or insufficient care.
-    
-    Why it's useful:
-    - Normalizes num_medications relative to hospital stay length.
-    - Adds context: 15 medications in 2 days ≠ 15 medications in 10 days.
-    - Helps identify outlier care patterns and treatment burden.
-
-    Precautions:
-    - Avoids division by zero by applying a floor of 1 to time_in_hospital.
-
-    Output:
-    - Adds a new column 'medications_per_day' to the dataset.
-
-    Usage:
-        pipeline = Pipeline([
-            ('MedicationIntensity', MedicationIntensityTransformer(config_path='src/config.yaml')),
-            ...
-        ])
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'MedicationIntensityTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        if 'num_medications' not in X.columns or 'time_in_hospital' not in X.columns:
-            missing = [col for col in ['num_medications', 'time_in_hospital'] if col not in X.columns]
-            self.logger.error(f"Missing columns for MedicationIntensityTransformer: {missing}")
-            raise ValueError(f"The following required columns are missing: {missing}")
-
-        if 'medications_per_day' in X.columns:
-            self.logger.warning("'medications_per_day' column already exists and will be overwritten.")
-
-        meds = pd.to_numeric(X['num_medications'], errors='coerce')
-        days = pd.to_numeric(X['time_in_hospital'], errors='coerce').replace(0, 1)  # avoid division by zero
-
-        X['medications_per_day'] = meds / days
-
-        self.logger.info("Created 'medications_per_day' feature as num_medications / time_in_hospital.")
-        return X
-
-class HasEmergencyVisitTransformer(BaseFeatureEngineer):
-    """
-    Adds a binary feature 'has_emergency_visit' indicating whether the patient
-    had at least one emergency room visit before this hospital admission.
-
-    Clinical motivation:
-    - Emergency visits reflect clinical instability or crisis episodes.
-    - Patients with prior emergency usage are at higher risk of readmission.
-
-    Output:
-    - Adds column 'has_emergency_visit': 1 if number_emergency > 0, else 0.
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'HasEmergencyVisitTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        if 'number_emergency' not in X.columns:
-            self.logger.error("Missing column 'number_emergency' for HasEmergencyVisitTransformer.")
-            raise ValueError("Required column 'number_emergency' is missing.")
-
-        if 'has_emergency_visit' in X.columns:
-            self.logger.warning("'has_emergency_visit' column already exists and will be overwritten.")
-
-        X['has_emergency_visit'] = (pd.to_numeric(X['number_emergency'], errors='coerce') > 0).astype(int)
-
-        self.logger.info("Created 'has_emergency_visit' feature based on emergency visit count.")
-        return X
-
-class WasMedicatedTransformer(BaseFeatureEngineer):
-    """
-    Adds a binary feature 'was_medicated' indicating whether the patient
-    received any medications during their hospital stay.
-
-    Clinical motivation:
-    - Active medication during stay implies treatment complexity.
-    - Patients with pharmacological interventions may have higher risk of readmission.
-
-    Output:
-    - Adds column 'was_medicated': 1 if num_medications > 0, else 0.
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'WasMedicatedTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        if 'num_medications' not in X.columns:
-            self.logger.error("Missing column 'num_medications' for WasMedicatedTransformer.")
-            raise ValueError("Required column 'num_medications' is missing.")
-
-        if 'was_medicated' in X.columns:
-            self.logger.warning("'was_medicated' column already exists and will be overwritten.")
-
-        X['was_medicated'] = (pd.to_numeric(X['num_medications'], errors='coerce') > 0).astype(int)
-
-        self.logger.info("Created 'was_medicated' feature based on num_medications.")
-        return X
-
-class HasCirculatoryDiagnosisTransformer(BaseFeatureEngineer):
-    """
-    Adds 'has_circulatory_diagnosis': 1 if any of diag_1, diag_2 or diag_3 is a circulatory system condition (ICD-9 390–459).
-
-    Clinical motivation:
-    - Circulatory diagnoses (heart failure, ischemia, hypertension) are strong predictors of hospital readmission.
-    - Indicates chronic disease burden and cardiovascular instability.
-
-    Output:
-    - Adds column 'has_circulatory_diagnosis': 1 if any diagnosis is between 390 and 459, else 0.
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'HasCirculatoryDiagnosisTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-        diag_cols = ['diag_1', 'diag_2', 'diag_3']
-
-        for col in diag_cols:
-            if col not in X.columns:
-                self.logger.error(f"Missing column '{col}' for circulatory diagnosis feature.")
-                raise ValueError(f"Required column '{col}' is missing.")
-
-        def is_circulatory(code):
-            try:
-                numeric = float(str(code).replace('E', '').replace('V', ''))
-                return 390 <= numeric <= 459
-            except ValueError:
-                return False
-
-        X['has_circulatory_diagnosis'] = X[diag_cols].apply(
-            lambda row: any(is_circulatory(code) for code in row), axis=1
-        ).astype(int)
-
-        self.logger.info("Created 'has_circulatory_diagnosis' feature.")
-        return X
-
-class HasDiabetesDiagnosisTransformer(BaseFeatureEngineer):
-    """
-    Adds 'has_diabetes_diagnosis': 1 if any of diag_1, diag_2 or diag_3 is a diabetes diagnosis (ICD-9 250.xx).
-
-    Clinical motivation:
-    - Diabetes mellitus is a chronic disease with high risk of readmission.
-    - Its presence increases the complexity of management and likelihood of acute events.
-
-    Output:
-    - Adds column 'has_diabetes_diagnosis': 1 if any diagnosis is in the ICD-9 range 250.00–250.99, else 0.
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'HasDiabetesDiagnosisTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-        diag_cols = ['diag_1', 'diag_2', 'diag_3']
-
-        for col in diag_cols:
-            if col not in X.columns:
-                self.logger.error(f"Missing column '{col}' for diabetes diagnosis feature.")
-                raise ValueError(f"Required column '{col}' is missing.")
-
-        def is_diabetes(code):
-            try:
-                code = str(code)
-                if code.startswith("250"):
-                    numeric = float(code)
-                    return 250.0 <= numeric < 251.0
-                return False
-            except ValueError:
-                return False
-
-        X['has_diabetes_diagnosis'] = X[diag_cols].apply(
-            lambda row: any(is_diabetes(code) for code in row), axis=1
-        ).astype(int)
-
-        self.logger.info("Created 'has_diabetes_diagnosis' feature.")
-        return X
-
-class ManyDiagnosesFlagTransformer(BaseFeatureEngineer):
-    """
-    Adds 'has_many_diagnoses': 1 if number_diagnoses >= 9.
-
-    Clinical motivation:
-    - A high number of diagnoses often indicates complex, multimorbid patients.
-    - These patients are more likely to be readmitted due to multiple care needs.
-
-    Output:
-    - Adds column 'has_many_diagnoses': 1 if number_diagnoses >= 9, else 0.
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'ManyDiagnosesFlagTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        if 'number_diagnoses' not in X.columns:
-            self.logger.error("Missing column 'number_diagnoses' for ManyDiagnosesFlagTransformer.")
-            raise ValueError("Required column 'number_diagnoses' is missing.")
-
-        if 'has_many_diagnoses' in X.columns:
-            self.logger.warning("'has_many_diagnoses' already exists and will be overwritten.")
-
-        X['has_many_diagnoses'] = (pd.to_numeric(X['number_diagnoses'], errors='coerce') >= 9).astype(int)
-
-        self.logger.info("Created 'has_many_diagnoses' feature.")
-        return X
-
-class HasKidneyDiagnosisTransformer(BaseFeatureEngineer):
-    """
-    Adds 'has_kidney_diagnosis': 1 if any of diag_1, diag_2 or diag_3 is a kidney condition (ICD-9 580–589).
-
-    Clinical motivation:
-    - Kidney diseases are common comorbidities that increase risk of readmission.
-    - They impact fluid/electrolyte balance and require chronic management.
-
-    Output:
-    - Adds column 'has_kidney_diagnosis': 1 if any diagnosis is between 580 and 589, else 0.
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'HasKidneyDiagnosisTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-        diag_cols = ['diag_1', 'diag_2', 'diag_3']
-
-        for col in diag_cols:
-            if col not in X.columns:
-                self.logger.error(f"Missing column '{col}' for kidney diagnosis feature.")
-                raise ValueError(f"Required column '{col}' is missing.")
-
-        def is_kidney(code):
-            try:
-                code = str(code)
-                if code.startswith('E') or code.startswith('V'):
-                    return False
-                numeric = float(code)
-                return 580 <= numeric <= 589
-            except ValueError:
-                return False
-
-        X['has_kidney_diagnosis'] = X[diag_cols].apply(
-            lambda row: any(is_kidney(code) for code in row), axis=1
-        ).astype(int)
-
-        self.logger.info("Created 'has_kidney_diagnosis' feature.")
-        return X
-
-class IsDischargedToFacilityTransformer(BaseFeatureEngineer):
-    """
-    Adds 'is_discharged_to_facility': 1 if discharge_disposition_id corresponds to a care facility.
-
-    Clinical motivation:
-    - Discharge to facilities (rehab, SNF, hospice, psychiatric hospitals) reflects higher illness burden.
-    - These patients are at greater risk of readmission than those discharged home.
-
-    Output:
-    - Adds column 'is_discharged_to_facility': 1 if discharge_disposition_id is in facility codes from config.yaml, else 0.
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-        self.facility_codes = [int(code) for code in self.config.get("facility_discharge_codes", [])]
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'IsDischargedToFacilityTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        if 'discharge_disposition_id' not in X.columns:
-            self.logger.error("Missing column 'discharge_disposition_id' for discharge feature.")
-            raise ValueError("Required column 'discharge_disposition_id' is missing.")
-
-        X['is_discharged_to_facility'] = X['discharge_disposition_id'].isin(self.facility_codes).astype(int)
-
-        self.logger.info("Created 'is_discharged_to_facility' feature.")
-        return X
-
-class IsGovernmentPayerTransformer(BaseFeatureEngineer):
-    """
-    Adds 'is_government_payer': 1 if payer_code is Medicare, Medicaid, or VA (MC, MD, CM).
-
-    Clinical motivation:
-    - Government payers (Medicare, Medicaid, VA) are associated with chronic conditions, socioeconomic vulnerability, and higher readmission risk.
-    - These signals are relevant for predictive modeling.
-
-    Output:
-    - Adds column 'is_government_payer': 1 if payer_code in government_payer_codes (config.yaml), else 0.
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-        self.gov_payer_codes = self.config.get("government_payer_codes", ["MC", "MD", "CM"])
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'IsGovernmentPayerTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        if 'payer_code' not in X.columns:
-            self.logger.error("Missing column 'payer_code' for insurance feature.")
-            raise ValueError("Required column 'payer_code' is missing.")
-
-        X['is_government_payer'] = X['payer_code'].apply(
-            lambda code: 1 if code in self.gov_payer_codes else 0
-        ).astype(int)
-
-        self.logger.info("Created 'is_government_payer' feature.")
-        return X
-
-class IsSpecialtyHighRiskTransformer(BaseFeatureEngineer):
-    """
-    Adds 'is_specialty_high_risk': 1 if medical_specialty is a high-risk specialty for readmission.
-
-    Clinical motivation:
-    - Certain specialties are associated with chronic, unstable, or complex patients.
-    - These include Internal Medicine, Cardiology, Nephrology, etc.
-
-    Output:
-    - Adds column 'is_specialty_high_risk': 1 if specialty in config high_risk list, else 0.
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-        self.high_risk_specialties = self.config.get("high_risk_specialties", [])
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'IsSpecialtyHighRiskTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        if 'medical_specialty' not in X.columns:
-            self.logger.error("Missing column 'medical_specialty' for specialty feature.")
-            raise ValueError("Required column 'medical_specialty' is missing.")
-
-        X['is_specialty_high_risk'] = X['medical_specialty'].fillna("").apply(
-            lambda x: 1 if str(x).strip() in self.high_risk_specialties else 0
-        ).astype(int)
-
-        self.logger.info("Created 'is_specialty_high_risk' feature.")
-        return X
-
-class IsAdmittedFromCriticalSourceTransformer(BaseFeatureEngineer):
-    """
-    Adds 'is_admitted_from_critical_source': 1 if admission_source_id is in high-risk admission sources.
-
-    Clinical motivation:
-    - Admissions from ER, nursing homes, or other hospitals often reflect acute deterioration.
-    - These are linked to higher readmission rates.
-
-    Output:
-    - Adds column 'is_admitted_from_critical_source': 1 if ID is in critical list from config.yaml.
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-        self.critical_sources = self.config.get("critical_admission_sources", [])
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'IsAdmittedFromCriticalSourceTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        if 'admission_source_id' not in X.columns:
-            self.logger.error("Missing column 'admission_source_id'.")
-            raise ValueError("Required column 'admission_source_id' is missing.")
-
-        X['is_admitted_from_critical_source'] = X['admission_source_id'].isin(self.critical_sources).astype(int)
-
-        self.logger.info("Created 'is_admitted_from_critical_source' feature.")
-        return X
-
-class HadMedicationChangeTransformer(BaseFeatureEngineer):
-    """
-    Adds 'had_medication_change': 1 if the patient had a change in medications during the stay.
-
-    Clinical motivation:
-    - Medication changes often reflect clinical instability or treatment adjustments.
-    - These factors are associated with a higher risk of early readmission.
-
-    Output:
-    - Adds column 'had_medication_change': 1 if change == 'Ch', else 0.
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def fit(self, X: pd.DataFrame, y=None) -> 'HadMedicationChangeTransformer':
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        if 'change' not in X.columns:
-            self.logger.error("Missing column 'change' for medication feature.")
-            raise ValueError("Required column 'change' is missing.")
-
-        X['had_medication_change'] = X['change'].fillna("").apply(
-            lambda x: 1 if str(x).strip().lower().startswith("ch") else 0
-        ).astype(int)
-
-        self.logger.info("Created 'had_medication_change' feature.")
-        return X
-
-
-class FeatureSelector(BaseFeatureEngineer):
-
-    """
-    Selects the top-k features using univariate statistical tests (ANOVA F-score).
-
-    Motivation:
-    - Reduces dimensionality and improves model generalization.
-    - Keeps only the most statistically relevant features.
-
-    Configuration:
-    - Reads 'n_features_to_select' from config.yaml under 'features'.
-
-    Output:
-    - A DataFrame with only the top-k selected features.
-
-    Usage:
-        pipeline = Pipeline([
-            ('select_k_best', FeatureSelector(config_path='src/config.yaml')),
-            ...
-        ])
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-        self.k = self.config['features']['n_features_to_select']
-        self.selector = SelectKBest(score_func=f_classif, k=self.k)
-        self.selected_features: list[str] = []
-
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> 'FeatureSelector':
-        if X.empty or X.shape[1] == 0:
-            self.logger.error("FeatureSelector received an empty feature matrix.")
-            raise ValueError("Input X has no features to select from.")
-
-        self.selector.fit(X, y)
-        self.selected_features = X.columns[self.selector.get_support()].tolist()
-        self.logger.info(f"Selected top {self.k} features: {self.selected_features}")
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X_selected = self.selector.transform(X)
-        return pd.DataFrame(X_selected, columns=self.selected_features)
-
-FEATURE_TRANSFORMERS = {
-     "age_group": AgeGroupTransformer,
-    "length_of_stay_group": LengthOfStayGroupTransformer,
-    "comorbidity": ComorbidityTransformer,
-    "previous_visits": PreviousVisitsTransformer,
-    "medication_intensity": MedicationIntensityTransformer,
-    "has_emergency_visit": HasEmergencyVisitTransformer,
-    "was_medicated": WasMedicatedTransformer,
-    "has_circulatory_diagnosis": HasCirculatoryDiagnosisTransformer,
-    "has_diabetes_diagnosis": HasDiabetesDiagnosisTransformer,
-    "has_many_diagnoses": ManyDiagnosesFlagTransformer,
-    "has_kidney_diagnosis": HasKidneyDiagnosisTransformer,
-    "is_discharged_to_facility": IsDischargedToFacilityTransformer,
-    "is_government_payer": IsGovernmentPayerTransformer,
-    "is_specialty_high_risk": IsSpecialtyHighRiskTransformer,
-    "is_admitted_from_critical_source": IsAdmittedFromCriticalSourceTransformer,
-    "had_medication_change": HadMedicationChangeTransformer,
-    "select_k_best": FeatureSelector
-}
-
-class FeatureEngineeringPipeline(BaseFeatureEngineer):
-
-    """
-    Pipeline class to orchestrate feature engineering steps:
-    - Applies feature creation transformers
-    - Applies feature selection using FeatureSelector
-    """
-
-    def __init__(self, config_path: str = "src/config.yaml"):
-        super().__init__(config_path)
-
-    def engineer_features(self, data: pd.DataFrame, target: pd.Series) -> Tuple[pd.DataFrame, List[str]]:
-        """
-        Execute the full feature engineering pipeline:
-        - Apply all feature creation transformers
-        - Apply SelectKBest to reduce dimensionality
-
-        Args:
-            data (pd.DataFrame): Input dataset
-            target (pd.Series): Target variable
-
-        Returns:
-            Tuple[pd.DataFrame, List[str]]: Transformed dataset and list of selected features
-        """
+        """Setup logging configuration."""
         try:
-            data_with_features = data.copy()
+            log_config = self.config.get('logging', {})
+            log_file = log_config.get('file', 'logs/feature_engineering.log').replace('main.log', 'feature_engineering.log')
+            log_level = log_config.get('level', 'INFO')
+            log_format = log_config.get('format', '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            
+            # Create logs directory if it doesn't exist
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            
+            # Configure logging
+            logging.basicConfig(
+                level=getattr(logging, log_level.upper()),
+                format=log_format,
+                handlers=[
+                    logging.FileHandler(log_file),
+                    logging.StreamHandler()
+                ]
+            )
+            
+            return logging.getLogger(__name__)
+        except Exception:
+            # Fallback logging
+            logging.basicConfig(level=logging.INFO)
+            return logging.getLogger(__name__)
 
-            for name, transformer_class in FEATURE_TRANSFORMERS.items():
-                if name != "select_k_best":
-                    transformer = transformer_class(config_path=self.config_path)
-                    data_with_features = transformer.fit_transform(data_with_features)
-
-            selector = FEATURE_TRANSFORMERS["select_k_best"](config_path=self.config_path)
-            X_selected = selector.fit_transform(data_with_features.drop(columns=[target.name]), target)
-            selected_features = selector.selected_features
-
-            self.logger.info("Feature engineering pipeline completed successfully.")
-            return X_selected, selected_features
-
+    def _create_age_groups(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Create age group categorical feature."""
+        try:
+            if 'age' not in data.columns:
+                self.logger.warning("'age' column not found, skipping age group creation")
+                return data
+            
+            # Convert age categories to numeric for grouping
+            age_mapping = {
+                '[0-10)': 5, '[10-20)': 15, '[20-30)': 25, '[30-40)': 35,
+                '[40-50)': 45, '[50-60)': 55, '[60-70)': 65, '[70-80)': 75,
+                '[80-90)': 85, '[90-100)': 95
+            }
+            
+            data = data.copy()
+            data['age_numeric'] = data['age'].map(age_mapping)
+            
+            # Create age groups
+            data['age_group'] = pd.cut(
+                data['age_numeric'],
+                bins=[0, 30, 50, 70, 100],
+                labels=['Young', 'Adult', 'Senior', 'Elderly'],
+                include_lowest=True
+            )
+            
+            # Drop temporary column
+            data = data.drop(columns=['age_numeric'])
+            
+            self.logger.info("✅ Created age_group feature")
+            return data
+            
         except Exception as e:
-            self.logger.error(f"Error in feature engineering pipeline: {str(e)}")
+            self.logger.error(f"Error creating age groups: {str(e)}")
+            return data
+
+    def _create_length_of_stay_groups(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Create length of stay categorical feature."""
+        try:
+            if 'time_in_hospital' not in data.columns:
+                self.logger.warning("'time_in_hospital' column not found, skipping LOS groups")
+                return data
+            
+            data = data.copy()
+            data['los_group'] = pd.cut(
+                data['time_in_hospital'],
+                bins=[0, 3, 7, 14, float('inf')],
+                labels=['Short', 'Medium', 'Long', 'Extended'],
+                include_lowest=True
+            )
+            
+            self.logger.info("✅ Created los_group feature")
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Error creating LOS groups: {str(e)}")
+            return data
+
+    def _create_total_visits(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Create total previous visits feature."""
+        try:
+            visit_columns = ['number_outpatient', 'number_emergency', 'number_inpatient']
+            missing_cols = [col for col in visit_columns if col not in data.columns]
+            
+            if missing_cols:
+                self.logger.warning(f"Missing visit columns {missing_cols}, skipping total visits")
+                return data
+            
+            data = data.copy()
+            data['total_visits'] = data[visit_columns].sum(axis=1)
+            
+            self.logger.info("✅ Created total_visits feature")
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Error creating total visits: {str(e)}")
+            return data
+
+    def _create_medication_intensity(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Create medication intensity feature."""
+        try:
+            required_cols = ['num_medications', 'time_in_hospital']
+            missing_cols = [col for col in required_cols if col not in data.columns]
+            
+            if missing_cols:
+                self.logger.warning(f"Missing columns {missing_cols}, skipping medication intensity")
+                return data
+            
+            data = data.copy()
+            # Avoid division by zero
+            data['medication_intensity'] = data['num_medications'] / (data['time_in_hospital'].replace(0, 1))
+            
+            self.logger.info("✅ Created medication_intensity feature")
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Error creating medication intensity: {str(e)}")
+            return data
+
+    def _create_binary_flags(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Create useful binary flag features."""
+        try:
+            data = data.copy()
+            created_flags = []
+            
+            # Has emergency visits
+            if 'number_emergency' in data.columns:
+                data['has_emergency_visits'] = (data['number_emergency'] > 0).astype(int)
+                created_flags.append('has_emergency_visits')
+            
+            # Was medicated
+            if 'num_medications' in data.columns:
+                data['was_medicated'] = (data['num_medications'] > 0).astype(int)
+                created_flags.append('was_medicated')
+            
+            # Many diagnoses (high complexity)
+            if 'number_diagnoses' in data.columns:
+                data['many_diagnoses'] = (data['number_diagnoses'] >= 9).astype(int)
+                created_flags.append('many_diagnoses')
+            
+            # Had medication change
+            if 'change' in data.columns:
+                data['medication_changed'] = (data['change'] == 'Ch').astype(int)
+                created_flags.append('medication_changed')
+            
+            # Is diabetic medication user
+            if 'diabetesMed' in data.columns:
+                data['uses_diabetes_med'] = (data['diabetesMed'] == 'Yes').astype(int)
+                created_flags.append('uses_diabetes_med')
+            
+            if created_flags:
+                self.logger.info(f"✅ Created binary flags: {created_flags}")
+            
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Error creating binary flags: {str(e)}")
+            return data
+
+    def _create_diagnosis_features(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Create diagnosis-based features."""
+        try:
+            diag_columns = ['diag_1', 'diag_2', 'diag_3']
+            available_diag_cols = [col for col in diag_columns if col in data.columns]
+            
+            if not available_diag_cols:
+                self.logger.warning("No diagnosis columns found, skipping diagnosis features")
+                return data
+            
+            data = data.copy()
+            created_features = []
+            
+            def extract_numeric_code(code):
+                """Extract numeric part from diagnosis code."""
+                try:
+                    code_str = str(code).strip()
+                    if code_str in ['', 'nan', 'None']:
+                        return None
+                    # Remove E and V prefixes, extract first numeric part
+                    if code_str.startswith(('E', 'V')):
+                        return None
+                    return float(code_str.split('.')[0])
+                except:
+                    return None
+            
+            # Check for diabetes (250.xx codes)
+            diabetes_flags = []
+            for col in available_diag_cols:
+                data[f'{col}_numeric'] = data[col].apply(extract_numeric_code)
+                diabetes_flag = (data[f'{col}_numeric'] == 250).astype(int)
+                diabetes_flags.append(diabetes_flag)
+                data = data.drop(columns=[f'{col}_numeric'])  # Clean up temp column
+            
+            if diabetes_flags:
+                data['has_diabetes_diagnosis'] = pd.concat(diabetes_flags, axis=1).max(axis=1)
+                created_features.append('has_diabetes_diagnosis')
+            
+            # Check for circulatory system diseases (390-459)
+            circulatory_flags = []
+            for col in available_diag_cols:
+                data[f'{col}_numeric'] = data[col].apply(extract_numeric_code)
+                circulatory_flag = data[f'{col}_numeric'].apply(
+                    lambda x: 1 if x is not None and 390 <= x <= 459 else 0
+                )
+                circulatory_flags.append(circulatory_flag)
+                data = data.drop(columns=[f'{col}_numeric'])  # Clean up temp column
+            
+            if circulatory_flags:
+                data['has_circulatory_diagnosis'] = pd.concat(circulatory_flags, axis=1).max(axis=1)
+                created_features.append('has_circulatory_diagnosis')
+            
+            if created_features:
+                self.logger.info(f"✅ Created diagnosis features: {created_features}")
+            
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Error creating diagnosis features: {str(e)}")
+            return data
+
+    def _handle_missing_values_smart(self, X: pd.DataFrame) -> None:
+        """Handle missing values intelligently based on column types."""
+        try:
+            for column in X.columns:
+                if X[column].isna().any():
+                    if X[column].dtype.name == 'category':
+                        # For categorical columns, add 'Unknown' category and fill
+                        if 'Unknown' not in X[column].cat.categories:
+                            X[column] = X[column].cat.add_categories(['Unknown'])
+                        X[column] = X[column].fillna('Unknown')
+                        self.logger.info(f"Filled categorical column '{column}' with 'Unknown'")
+                    elif X[column].dtype in ['int64', 'float64', 'int32', 'float32']:
+                        # For numerical columns, fill with 0
+                        X[column] = X[column].fillna(0)
+                        self.logger.info(f"Filled numerical column '{column}' with 0")
+                    else:
+                        # For other types, convert to string and fill with 'Unknown'
+                        X[column] = X[column].astype(str).fillna('Unknown')
+                        self.logger.info(f"Filled column '{column}' with 'Unknown'")
+                        
+        except Exception as e:
+            self.logger.error(f"Error handling missing values: {str(e)}")
+            # Fallback: try to handle each column type separately
+            for column in X.columns:
+                if X[column].isna().any():
+                    if X[column].dtype.name == 'category':
+                        X[column] = X[column].cat.add_categories(['Unknown']).fillna('Unknown')
+                    else:
+                        X[column] = X[column].fillna(0 if np.issubdtype(X[column].dtype, np.number) else 'Unknown')
+
+    def _encode_categorical_features(self, X: pd.DataFrame, is_training: bool = True) -> pd.DataFrame:
+        """Encode categorical features for machine learning models."""
+        try:
+            X_encoded = X.copy()
+            
+            # Get categorical columns (including category dtype and object dtype)
+            categorical_cols = X_encoded.select_dtypes(include=['category', 'object']).columns.tolist()
+            
+            if len(categorical_cols) > 0:
+                self.logger.info(f"Encoding {len(categorical_cols)} categorical features: {categorical_cols}")
+                
+                for col in categorical_cols:
+                    if is_training:
+                        # Fit new encoder during training
+                        if col not in self.label_encoders:
+                            le = LabelEncoder()
+                            # Handle NaN values by converting to string
+                            X_encoded[col] = X_encoded[col].astype(str).fillna('Unknown')
+                            
+                            # Fit the encoder
+                            le.fit(X_encoded[col])
+                            self.label_encoders[col] = le
+                            
+                            self.logger.info(f"Fitted label encoder for column '{col}' with {len(le.classes_)} categories")
+                        
+                        # Transform using fitted encoder
+                        le = self.label_encoders[col]
+                        X_encoded[col] = X_encoded[col].astype(str).fillna('Unknown')
+                        X_encoded[col] = le.transform(X_encoded[col])
+                    
+                    else:
+                        # Transform using existing encoder during inference
+                        if col in self.label_encoders:
+                            le = self.label_encoders[col]
+                            X_encoded[col] = X_encoded[col].astype(str).fillna('Unknown')
+                            
+                            # Handle unknown categories
+                            unknown_mask = ~X_encoded[col].isin(le.classes_)
+                            if unknown_mask.any():
+                                self.logger.warning(f"Found {unknown_mask.sum()} unknown categories in column '{col}'. Replacing with 'Unknown'.")
+                                X_encoded.loc[unknown_mask, col] = 'Unknown'
+                                
+                                # Add 'Unknown' to encoder classes if not present
+                                if 'Unknown' not in le.classes_:
+                                    le.classes_ = np.append(le.classes_, 'Unknown')
+                            
+                            X_encoded[col] = le.transform(X_encoded[col])
+                            
+                        else:
+                            # If encoder doesn't exist, create a simple one (fallback)
+                            self.logger.warning(f"No encoder found for column '{col}'. Creating fallback encoder.")
+                            le = LabelEncoder()
+                            X_encoded[col] = X_encoded[col].astype(str).fillna('Unknown')
+                            X_encoded[col] = le.fit_transform(X_encoded[col])
+                            self.label_encoders[col] = le
+                    
+                    # Ensure the column is numeric
+                    X_encoded[col] = X_encoded[col].astype(int)
+                    self.logger.info(f"Encoded categorical column '{col}' to integer")
+            
+            self.logger.info(f"✅ Categorical encoding completed. Final shape: {X_encoded.shape}")
+            return X_encoded
+            
+        except Exception as e:
+            self.logger.error(f"Error encoding categorical features: {str(e)}")
+            # Fallback: simple label encoding
+            try:
+                X_encoded = X.copy()
+                categorical_cols = X_encoded.select_dtypes(include=['category', 'object']).columns
+                
+                for col in categorical_cols:
+                    le = LabelEncoder()
+                    X_encoded[col] = X_encoded[col].astype(str).fillna('Unknown')
+                    X_encoded[col] = le.fit_transform(X_encoded[col])
+                    self.logger.info(f"Applied fallback encoding to column '{col}'")
+                
+                return X_encoded
+            except Exception as fallback_error:
+                self.logger.error(f"Fallback encoding also failed: {str(fallback_error)}")
+                raise
+
+    def _apply_feature_selection(self, X: pd.DataFrame, y: pd.Series) -> pd.DataFrame:
+        """Apply feature selection to reduce dimensionality."""
+        try:
+            feature_config = self.config.get('feature_engineering', {})
+            n_features = feature_config.get('n_features_to_select')
+            
+            if not n_features or n_features >= X.shape[1]:
+                self.logger.info("Skipping feature selection (k >= total features)")
+                self.selected_features = list(X.columns)
+                return X
+            
+            self.logger.info(f"Selecting top {n_features} features using ANOVA F-test...")
+            
+            # All features should be numerical at this point after encoding
+            # But let's double-check
+            non_numeric_cols = X.select_dtypes(exclude=[np.number]).columns
+            if len(non_numeric_cols) > 0:
+                self.logger.warning(f"Found non-numeric columns after encoding: {list(non_numeric_cols)}")
+                # Try to convert them
+                for col in non_numeric_cols:
+                    try:
+                        X[col] = pd.to_numeric(X[col], errors='coerce').fillna(0)
+                    except:
+                        self.logger.error(f"Could not convert column {col} to numeric. Dropping it.")
+                        X = X.drop(columns=[col])
+            
+            # If we don't have enough features for selection, keep all
+            if X.shape[1] <= n_features:
+                self.logger.info(f"Not enough features ({X.shape[1]}) for selection (k={n_features}). Keeping all features.")
+                self.selected_features = list(X.columns)
+                return X
+            
+            # Encode target variable if it's categorical
+            y_encoded = y.copy()
+            if y.dtype == 'object':
+                le = LabelEncoder()
+                y_encoded = le.fit_transform(y)
+            
+            # Apply feature selection
+            self.feature_selector = SelectKBest(score_func=f_classif, k=n_features)
+            X_selected_array = self.feature_selector.fit_transform(X, y_encoded)
+            
+            # Get selected feature names
+            selected_mask = self.feature_selector.get_support()
+            self.selected_features = X.columns[selected_mask].tolist()
+            
+            # Create final DataFrame
+            X_selected = pd.DataFrame(X_selected_array, columns=self.selected_features, index=X.index)
+            
+            self.logger.info(f"✅ Selected {len(self.selected_features)} features from {X.shape[1]} total")
+            self.logger.info(f"Selected features: {self.selected_features}")
+            
+            return X_selected
+            
+        except Exception as e:
+            self.logger.error(f"Error in feature selection: {str(e)}")
+            # Return original data if feature selection fails
+            self.logger.warning("Returning original features due to feature selection error")
+            self.selected_features = list(X.columns)
+            return X
+
+    def fit_transform(self, data: pd.DataFrame, target_col: str = 'readmitted') -> Tuple[pd.DataFrame, pd.Series]:
+        """Fit the feature engineering pipeline and transform the data."""
+        try:
+            self.logger.info("🔧 Starting feature engineering pipeline...")
+            
+            # Validate input
+            if data.empty:
+                raise ValueError("Cannot perform feature engineering on empty DataFrame")
+            if target_col not in data.columns:
+                raise KeyError(f"Target column '{target_col}' not found in data")
+            
+            # Initialize report
+            self.report = {
+                'timestamp': pd.Timestamp.now().isoformat(),
+                'original_shape': data.shape,
+                'target_column': target_col,
+                'original_features': list(data.columns)
+            }
+            
+            # Separate target
+            X = data.drop(columns=[target_col])
+            y = data[target_col]
+            
+            self.original_features = list(X.columns)
+            
+            # Apply feature engineering steps
+            self.logger.info("Creating new features...")
+            
+            # Create new features
+            X = self._create_age_groups(X)
+            X = self._create_length_of_stay_groups(X)
+            X = self._create_total_visits(X)
+            X = self._create_medication_intensity(X)
+            X = self._create_binary_flags(X)
+            X = self._create_diagnosis_features(X)
+            
+            # Track engineered features
+            self.engineered_features = [col for col in X.columns if col not in self.original_features]
+            
+            self.logger.info(f"Created {len(self.engineered_features)} new features: {self.engineered_features}")
+            
+            # Handle missing values in new features
+            self._handle_missing_values_smart(X)
+            
+            # Encode categorical features for ML models
+            X = self._encode_categorical_features(X, is_training=True)
+            
+            # Apply feature selection
+            if self.config.get('feature_engineering', {}).get('apply_selection', True):
+                X_selected = self._apply_feature_selection(X, y)
+            else:
+                X_selected = X
+                self.selected_features = list(X.columns)
+                self.logger.info("Feature selection disabled in config")
+            
+            # Update report
+            self.report.update({
+                'features_after_engineering': X.shape[1],
+                'engineered_features': self.engineered_features,
+                'features_after_selection': X_selected.shape[1],
+                'selected_features': self.selected_features,
+                'final_shape': X_selected.shape,
+                'engineering_completed': True
+            })
+            
+            # Write report
+            self._write_report()
+            
+            self.logger.info("✅ Feature engineering completed successfully!")
+            self.logger.info(f"Final feature shape: {X_selected.shape}")
+            
+            return X_selected, y
+            
+        except Exception as e:
+            self.logger.error(f"❌ Feature engineering failed: {str(e)}")
+            self.report['engineering_failed'] = True
+            self.report['error'] = str(e)
+            self._write_report()
             raise
 
+    def transform(self, data: pd.DataFrame, target_col: str = 'readmitted') -> Tuple[pd.DataFrame, pd.Series]:
+        """Transform new data using the fitted feature engineering pipeline."""
+        try:
+            self.logger.info("🔄 Transforming data with fitted feature engineering pipeline...")
+            
+            # Validate input
+            if data.empty:
+                raise ValueError("Cannot transform empty DataFrame")
+            if target_col not in data.columns:
+                raise KeyError(f"Target column '{target_col}' not found in data")
+            
+            # Separate target
+            X = data.drop(columns=[target_col])
+            y = data[target_col]
+            
+            # Apply the same feature engineering steps
+            X = self._create_age_groups(X)
+            X = self._create_length_of_stay_groups(X)
+            X = self._create_total_visits(X)
+            X = self._create_medication_intensity(X)
+            X = self._create_binary_flags(X)
+            X = self._create_diagnosis_features(X)
+            
+            # Handle missing values
+            self._handle_missing_values_smart(X)
+            
+            # Encode categorical features using fitted encoders
+            X = self._encode_categorical_features(X, is_training=False)
+            
+            # Apply feature selection if fitted
+            if self.feature_selector is not None and self.selected_features:
+                # Ensure we only select from features that exist
+                available_features = [f for f in self.selected_features if f in X.columns]
+                if len(available_features) != len(self.selected_features):
+                    self.logger.warning(f"Some features missing in transform data. Using {len(available_features)} of {len(self.selected_features)} features.")
+                
+                X_selected = X[available_features]
+            else:
+                # If no feature selection was applied during fit
+                X_selected = X
+            
+            self.logger.info(f"✅ Data transformed successfully. Shape: {X_selected.shape}")
+            
+            return X_selected, y
+            
+        except Exception as e:
+            self.logger.error(f"❌ Data transformation failed: {str(e)}")
+            raise
+
+    def get_feature_names(self) -> List[str]:
+        """Get the names of the final selected features."""
+        if not self.selected_features:
+            raise ValueError("Pipeline not fitted yet. Feature names unavailable.")
+        return self.selected_features.copy()
+
+    def get_engineered_features(self) -> List[str]:
+        """Get the names of the newly created features."""
+        return self.engineered_features.copy()
+
+    def _write_report(self):
+        """Write feature engineering report to file."""
+        try:
+            report_dir = Path("logs")
+            report_dir.mkdir(exist_ok=True)
+            
+            report_file = report_dir / "feature_engineering_report.json"
+            with open(report_file, "w") as f:
+                json.dump(self.report, f, indent=2, default=str)
+                
+            self.logger.info(f"📋 Feature engineering report written to: {report_file}")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to write feature engineering report: {str(e)}")
+
+
+if __name__ == "__main__":
+    """Demonstrate FeatureEngineer functionality."""
+    print("Feature engineering module loaded successfully.")
+    print("Usage examples:")
+    print("  from src.features.feature_engineering import FeatureEngineer")
+    print("  engineer = FeatureEngineer()")
+    print("  X_train, y_train = engineer.fit_transform(train_data)")
+    print("  X_test, y_test = engineer.transform(test_data)")

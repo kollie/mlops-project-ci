@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
-import pandas as pd
+import builtins
+from unittest.mock import patch
 from src.evaluation.evaluator import ModelEvaluator
 
 @pytest.fixture
@@ -113,14 +114,10 @@ def test_evaluation_with_missing_data(evaluator):
 def test_evaluator_with_invalid_probabilities(evaluator):
     """Test evaluator behavior with malformed probabilities."""
     y_true = np.array(['NO', 'YES', 'NO'])
-    y_pred = np.array(['NO', 'YES', 'YES'])
     y_prob = np.array([[0.9], [0.2], [0.5]])  # Invalid shape (1 prob instead of 2 classes)
 
     with pytest.raises(Exception):
         evaluator.calculate_roc_curve(y_true, y_prob)
-
-import builtins
-from unittest.mock import patch
 
 def test_save_metrics_fails_gracefully_on_io_error(evaluator, sample_predictions):
     """Test save_metrics handles IOError properly."""

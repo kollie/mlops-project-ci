@@ -1,6 +1,7 @@
 import logging
 import sys
 import os
+import pandas as pd
 from pathlib import Path
 
 # Add project root to path for imports
@@ -10,6 +11,8 @@ from src.data_loader.data_loader import DataLoader
 from src.validation.data_validator import DataValidator
 from src.eda.eda import EDAAnalyzer
 from src.preprocessing.preprocessor import Preprocessor
+from src.features.feature_engineering import FeatureEngineer
+from src.model.trainer import ModelTrainer
 
 def setup_logging():
     """Setup logging configuration."""
@@ -97,8 +100,36 @@ def main():
         # Save the fitted preprocessor
         preprocessor.save_pipeline("models/preprocessor.joblib")
         
-        # Step 7: Feature engineering (when module exists)
-        # Step 8: Model training (when module exists)
+        # Step 7: Feature Engineering
+        logger.info("Applying feature engineering...")
+        engineer = FeatureEngineer(config_path="src/config.yaml")
+        X_train_eng, y_train = engineer.fit_transform(
+            pd.concat([X_train, y_train], axis=1), 
+            target_col='readmitted'
+        )
+        logger.info(f"Training data after feature engineering. Shape: {X_train_eng.shape}")
+
+        # Transform validation and test sets
+        X_val_eng, y_val = engineer.transform(
+            pd.concat([X_val, y_val], axis=1), 
+            target_col='readmitted'
+        )
+        X_test_eng, y_test = engineer.transform(
+            pd.concat([X_test, y_test], axis=1), 
+            target_col='readmitted'
+        )
+        # Step 8: Train Model
+        logger.info("Training model...")
+        trainer = ModelTrainer(config_path="src/config.yaml")
+        trainer.fit(X_train_eng, y_train)
+
+        # Step 9: Save Model
+        model_path = trainer.save()
+        logger.info(f"Model saved to: {model_path}")
+
+        # For inference later:
+        predictions = trainer.predict(X_test_eng)
+        
         # Step 9: Evaluation (when module exists)
         
         logger.info("Pipeline completed successfully")

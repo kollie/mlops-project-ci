@@ -1,467 +1,588 @@
 """
-test_feature_engineering.py
+Unit tests for the Feature Engineering module.
 
-Unit tests for all custom feature engineering transformers.
-
-Purpose:
---------
-- Validates correctness and robustness of each engineered feature individually.
-- Ensures each transformer returns expected outputs for both standard and edge case inputs.
-- Required for reproducibility, CI/CD integration, and long-term pipeline stability.
-
-DEV Testing Standards (Based on MLOps Best Practices):
--------------------------------------------------------
-- Uses only mock/synthetic data (never real production inputs).
-- Validates feature logic in isolation with no pipeline dependencies.
-- Covers both success and failure scenarios (missing columns, invalid values).
-- Tests should be fast, deterministic, and independently executable.
-- Ensures clean error handling, consistent output types, and edge case coverage.
-
-Each feature transformer must be tested independently:
-- No hidden assumptions, chaining, or cross-transformer dependencies.
-- One test per transformer as minimum.
-- All logic paths must be exercised.
-
-Example features tested in this file:
-- AgeGroupTransformer
-- LengthOfStayGroupTransformer
-- ComorbidityTransformer
-...
+Tests the FeatureEngineer class and its feature creation methods
+following the same patterns as other modules in the pipeline.
 """
+
 import pytest
 import pandas as pd
 import numpy as np
+import yaml
+import os
+import tempfile
+import shutil
+from pathlib import Path
 import sys
-from src import BaseFeatureEngineer
-from src.features.feature_engineering import FEATURE_TRANSFORMERS
-
-
-
-
-CONFIG_PATH = "src/config.yaml"
-
-@pytest.fixture
-def patient_base():
-    """
-    Fixture: returns minimal mock patient data with all necessary features.
-    This will be copied/modified per test to simulate edge and typical cases.
-    """
-    return pd.DataFrame({
-        "age": [60],
-        "time_in_hospital": [7],
-        "num_medications": [14],
-        "number_inpatient": [1],
-        "number_outpatient": [2],
-        "number_emergency": [3],
-        "number_diagnoses": [8],
-        "diag_1": ["401"],
-        "diag_2": ["250.02"],
-        "diag_3": ["585"],
-        "discharge_disposition_id": [3],
-        "payer_code": ["MC"],
-        "medical_specialty": ["Cardiology"],
-        "admission_source_id": [7],
-        "change": ["Ch"]
-    })
-
-CONFIG_PATH = "src/config.yaml"
-
-def test_length_of_stay_group_basic():
-    """
-    Test that LengthOfStayGroupTransformer correctly bins 'time_in_hospital' into categorical ranges.
-
-    - Input: patient with time_in_hospital = 8
-    - Expected: 'length_of_stay_group' column is created and matches correct bin from config
-
-    Rationale:
-    - Verifies that numeric hospital stay is transformed into discrete risk groups
-    - Prevents downstream errors due to missing or misclassified feature
-    - Ensures consistent, reproducible binning logic driven by config.yaml
-    """
-    df = pd.DataFrame({"time_in_hospital": [8]})
-
-    transformer = FEATURE_TRANSFORMERS["length_of_stay_group"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "length_of_stay_group" in out.columns
-    assert pd.api.types.is_categorical_dtype(out["length_of_stay_group"])
-    assert not pd.isna(out["length_of_stay_group"].iloc[0])
-
-
-def test_comorbidity_basic():
-    """
-    Test that ComorbidityTransformer correctly computes the sum of comorbidity indicators
-    into the 'num_conditions' feature.
-
-    - Input: one patient with values: 5 (diagnoses), 2 (inpatient), 1 (outpatient), 1 (emergency)
-    - Expected: num_conditions = 9
-
-    Rationale:
-    - Validates config-driven summation of multiple clinical columns
-    - Ensures output is numeric, present, and reproducible
-    - Prevents silent column mismatch or type errors
-    """
-    df = pd.DataFrame({
-        "number_diagnoses": [5],
-        "number_inpatient": [2],
-        "number_outpatient": [1],
-        "number_emergency": [1]
-    })
-
-    transformer = FEATURE_TRANSFORMERS["comorbidity"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "num_conditions" in out.columns
-    assert out["num_conditions"].iloc[0] == 9
-
-def test_previous_visits_basic():
-    """
-    Test that PreviousVisitsTransformer correctly computes the total number of previous visits
-    using inpatient, outpatient, and emergency visits.
-
-    - Input: inpatient = 2, outpatient = 3, emergency = 1
-    - Expected: total_prev_visits = 6
-
-    Rationale:
-    - Verifies summation of operational visit indicators into a single numeric feature
-    - Captures healthcare system usage intensity
-    - Prevents errors due to missing or misconfigured columns
-    """
-    df = pd.DataFrame({
-        "number_inpatient": [2],
-        "number_outpatient": [3],
-        "number_emergency": [1]
-    })
-
-    transformer = FEATURE_TRANSFORMERS["previous_visits"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "total_prev_visits" in out.columns
-    assert out["total_prev_visits"].iloc[0] == 6
-
-def test_medication_intensity_basic():
-    """
-    Test that MedicationIntensityTransformer calculates the medications per hospital day.
-
-    - Input: num_medications = 20, time_in_hospital = 5
-    - Expected: medications_per_day = 4.0
-
-    Rationale:
-    - Ensures proper normalization of medication count by stay duration
-    - Handles division and coercion correctly (even with potential 0-day stays)
-    - Prevents clinical misinterpretation from raw medication counts
-    """
-    df = pd.DataFrame({
-        "num_medications": [20],
-        "time_in_hospital": [5]
-    })
-
-    transformer = FEATURE_TRANSFORMERS["medication_intensity"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "medications_per_day" in out.columns
-    assert out["medications_per_day"].iloc[0] == 4.0
-
-def test_has_emergency_visit_basic():
-    """
-    Test that HasEmergencyVisitTransformer creates a binary feature based on emergency visits.
-
-    - Input: number_emergency = 2
-    - Expected: has_emergency_visit = 1
-
-    Rationale:
-    - Identifies patients with prior emergency usage, a known readmission risk factor
-    - Ensures numeric coercion and correct binary assignment
-    - Prevents silent failure if column missing or zero values
-    """
-    df = pd.DataFrame({"number_emergency": [2]})
-
-    transformer = FEATURE_TRANSFORMERS["has_emergency_visit"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "has_emergency_visit" in out.columns
-    assert out["has_emergency_visit"].iloc[0] == 1
-
-def test_was_medicated_basic():
-    """
-    Test that WasMedicatedTransformer correctly creates a binary feature indicating
-    whether the patient received any medications.
-
-    - Input: num_medications = 10
-    - Expected: was_medicated = 1
-
-    Rationale:
-    - Captures whether pharmacological treatment was applied during stay
-    - Ensures binary output and numeric coercion
-    - Helps prevent failure from missing or malformed values
-    """
-    df = pd.DataFrame({"num_medications": [10]})
-
-    transformer = FEATURE_TRANSFORMERS["was_medicated"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "was_medicated" in out.columns
-    assert out["was_medicated"].iloc[0] == 1
-
-def test_has_circulatory_diagnosis_basic():
-    """
-    Test that HasCirculatoryDiagnosisTransformer detects ICD-9 circulatory codes (390–459).
-
-    - Input: diag_1 = "401", diag_2 = "250.02", diag_3 = "585"
-    - Expected: has_circulatory_diagnosis = 1
-
-    Rationale:
-    - Ensures correct ICD-based flag for circulatory diseases
-    - Important risk factor for readmission
-    - Prevents logic error in multi-column scanning
-    """
-    df = pd.DataFrame({
-        "diag_1": ["401"],
-        "diag_2": ["250.02"],
-        "diag_3": ["585"]
-    })
-
-    transformer = FEATURE_TRANSFORMERS["has_circulatory_diagnosis"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "has_circulatory_diagnosis" in out.columns
-    assert out["has_circulatory_diagnosis"].iloc[0] == 1
-
-def test_has_diabetes_diagnosis_basic():
-    """
-    Test that HasDiabetesDiagnosisTransformer flags ICD-9 diabetes codes (250.xx) correctly.
-
-    - Input: diag_1 = "401", diag_2 = "250.02", diag_3 = "585"
-    - Expected: has_diabetes_diagnosis = 1
-
-    Rationale:
-    - Captures chronic disease risk from known diabetes codes
-    - Ensures reliable ICD-based parsing across diagnosis columns
-    - Avoids false negatives due to type or prefix issues
-    """
-    df = pd.DataFrame({
-        "diag_1": ["401"],
-        "diag_2": ["250.02"],
-        "diag_3": ["585"]
-    })
-
-    transformer = FEATURE_TRANSFORMERS["has_diabetes_diagnosis"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "has_diabetes_diagnosis" in out.columns
-    assert out["has_diabetes_diagnosis"].iloc[0] == 1
-
-def test_has_many_diagnoses_basic():
-    """
-    Test that ManyDiagnosesFlagTransformer flags patients with 9 or more diagnoses.
-
-    - Input: number_diagnoses = 9
-    - Expected: has_many_diagnoses = 1
-
-    Rationale:
-    - Captures multimorbidity and clinical complexity
-    - Ensures reliable binary output for downstream modeling
-    - Prevents misflagging from boundary conditions (e.g. 8 vs 9)
-    """
-    df = pd.DataFrame({"number_diagnoses": [9]})
-
-    transformer = FEATURE_TRANSFORMERS["has_many_diagnoses"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "has_many_diagnoses" in out.columns
-    assert out["has_many_diagnoses"].iloc[0] == 1
-
-def test_has_kidney_diagnosis_basic():
-    """
-    Test that HasKidneyDiagnosisTransformer detects ICD-9 kidney-related codes (580–589).
-
-    - Input: diag_1 = "401", diag_2 = "250.02", diag_3 = "585"
-    - Expected: has_kidney_diagnosis = 1
-
-    Rationale:
-    - Identifies patients with renal comorbidity
-    - Prevents misclassification by ensuring code ranges are respected
-    - Relies on robust multi-column check
-    """
-    df = pd.DataFrame({
-        "diag_1": ["401"],
-        "diag_2": ["250.02"],
-        "diag_3": ["585"]
-    })
-
-    transformer = FEATURE_TRANSFORMERS["has_kidney_diagnosis"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "has_kidney_diagnosis" in out.columns
-    assert out["has_kidney_diagnosis"].iloc[0] == 1
-
-def test_is_discharged_to_facility_basic():
-    """
-    Test that IsDischargedToFacilityTransformer flags facility-based discharges correctly.
-
-    - Input: discharge_disposition_id = 3 (in config-defined facility list)
-    - Expected: is_discharged_to_facility = 1
-
-    Rationale:
-    - Captures institutional discharges associated with higher readmission risk
-    - Ensures correct config loading and membership logic
-    - Prevents mismatches if facility codes change
-    """
-    df = pd.DataFrame({"discharge_disposition_id": [3]})
-
-    transformer = FEATURE_TRANSFORMERS["is_discharged_to_facility"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "is_discharged_to_facility" in out.columns
-    assert out["is_discharged_to_facility"].iloc[0] == 1
-
-def test_is_government_payer_basic():
-    """
-    Test that IsGovernmentPayerTransformer flags government payer codes correctly.
-
-    - Input: payer_code = "MC" (Medicare, listed in config)
-    - Expected: is_government_payer = 1
-
-    Rationale:
-    - Captures socioeconomic signals from payer types
-    - Verifies config-based list matching
-    - Prevents logic break if payer codes change or are missing
-    """
-    df = pd.DataFrame({"payer_code": ["MC"]})
-
-    transformer = FEATURE_TRANSFORMERS["is_government_payer"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "is_government_payer" in out.columns
-    assert out["is_government_payer"].iloc[0] == 1
-
-def test_is_specialty_high_risk_basic():
-    """
-    Test that IsSpecialtyHighRiskTransformer flags specialties defined as high-risk in config.yaml.
-
-    - Input: medical_specialty = "Cardiology"
-    - Expected: is_specialty_high_risk = 1
-
-    Rationale:
-    - Captures medical departments associated with higher readmission probability
-    - Verifies config-driven logic for dynamic specialty classification
-    - Ensures no misflagging due to whitespace, casing, or missing values
-    """
-    df = pd.DataFrame({"medical_specialty": ["Cardiology"]})
-
-    transformer = FEATURE_TRANSFORMERS["is_specialty_high_risk"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "is_specialty_high_risk" in out.columns
-    assert out["is_specialty_high_risk"].iloc[0] == 1
-
-def test_is_admitted_from_critical_source_basic():
-    """
-    Test that IsAdmittedFromCriticalSourceTransformer correctly flags critical admission sources.
-
-    - Input: admission_source_id = 7 (in config list)
-    - Expected: is_admitted_from_critical_source = 1
-
-    Rationale:
-    - Captures context of urgent or acute admission pathways
-    - Ensures config-driven flagging logic is applied correctly
-    - Prevents silent errors from changes in source ID mapping
-    """
-    df = pd.DataFrame({"admission_source_id": [7]})
-
-    transformer = FEATURE_TRANSFORMERS["is_admitted_from_critical_source"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "is_admitted_from_critical_source" in out.columns
-    assert out["is_admitted_from_critical_source"].iloc[0] == 1
-
-def test_had_medication_change_basic():
-    """
-    Test that HadMedicationChangeTransformer flags medication changes based on the 'change' column.
-
-    - Input: change = 'Ch'
-    - Expected: had_medication_change = 1
-
-    Rationale:
-    - Captures treatment adjustments during stay
-    - Prevents false negatives due to missing or malformed values
-    - Ensures text parsing logic is robust and case-insensitive
-    """
-    df = pd.DataFrame({"change": ["Ch"]})
-
-    transformer = FEATURE_TRANSFORMERS["had_medication_change"](config_path=CONFIG_PATH)
-    out = transformer.transform(df)
-
-    assert "had_medication_change" in out.columns
-    assert out["had_medication_change"].iloc[0] == 1
-
-def test_select_k_best_basic():
-    """
-    Test that FeatureSelector correctly selects the top-k features using univariate F-test.
-
-    - Input: 15 numeric features, binary target
-    - Config: k = 10
-    - Expected: Output dataframe has 10 columns
-
-    Rationale:
-    - Reduces dimensionality to improve generalization
-    - Ensures compatibility with sklearn pipeline standards
-    - Validates selection logic and shape of output
-    """
-    # Input: 15 features, 5 samples
-    np.random.seed(0)
-    X = pd.DataFrame(np.random.rand(5, 15), columns=[f"feat_{i}" for i in range(15)])
-    y = pd.Series([0, 1, 0, 1, 0], name="readmitted")
-
-    transformer = FEATURE_TRANSFORMERS["select_k_best"](config_path=CONFIG_PATH)
-    transformer.fit(X, y)
-    out = transformer.transform(X)
-
-    assert isinstance(out, pd.DataFrame)
-    assert out.shape[1] == 10
-    assert len(out) == 5
-
-def test_feature_engineering_pipeline_integration():
-    """
-    Integration test for FeatureEngineeringPipeline.
-
-    - Input: synthetic dataset with all required columns + binary target
-    - Expected: returned dataframe with top-k selected features and no NaNs
-
-    Rationale:
-    - Verifies end-to-end pipeline orchestration
-    - Ensures compatibility between individual transformers and selector
-    - Captures integration issues (e.g., column mismatch, data leakage)
-    """
-    # Minimal input (2 samples)
-    df = pd.DataFrame({
-        "age": [60, 45],
-        "time_in_hospital": [5, 10],
-        "num_medications": [12, 18],
-        "number_inpatient": [1, 0],
-        "number_outpatient": [2, 1],
-        "number_emergency": [0, 3],
-        "number_diagnoses": [5, 9],
-        "diag_1": ["401", "250.02"],
-        "diag_2": ["250.02", "585"],
-        "diag_3": ["585", "414"],
-        "discharge_disposition_id": [3, 1],
-        "payer_code": ["MC", "HM"],
-        "medical_specialty": ["Cardiology", "Surgery-General"],
-        "admission_source_id": [7, 4],
-        "change": ["Ch", "No"],
-        "readmitted": [1, 0]
-    })
-
-    X = df.drop(columns=["readmitted"])
-    y = df["readmitted"]
-
-    from src.features.feature_engineering import FeatureEngineeringPipeline
-    pipeline = FeatureEngineeringPipeline(config_path=CONFIG_PATH)
-    X_transformed, selected_features = pipeline.engineer_features(X, y)
-
-    assert isinstance(X_transformed, pd.DataFrame)
-    assert len(X_transformed) == 2
-    assert len(selected_features) <= X.shape[1] + 16  # 16 engineered features
-    assert not X_transformed.isnull().any().any()
-    assert all([col in X_transformed.columns for col in selected_features])
+
+# Add project root to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from src.features.feature_engineering import FeatureEngineer
+
+
+class TestFeatureEngineer:
+    
+    @pytest.fixture
+    def temp_dir(self):
+        """Create a temporary directory for tests."""
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+    
+    @pytest.fixture
+    def sample_config(self, temp_dir):
+        """Create a sample configuration for testing."""
+        config = {
+            'data': {
+                'raw_data_path': os.path.join(temp_dir, "raw_data.csv"),
+                'processed_data_path': os.path.join(temp_dir, "processed")
+            },
+            'model': {
+                'test_size': 0.2,
+                'validation_size': 0.2,
+                'random_state': 42
+            },
+            'features': {
+                'categorical_features': ['age', 'gender', 'race'],
+                'numerical_features': [
+                    'time_in_hospital', 'num_lab_procedures', 'num_procedures',
+                    'num_medications', 'number_outpatient', 'number_emergency',
+                    'number_inpatient', 'number_diagnoses'
+                ],
+                'drop_columns': [],
+                'target_column': 'readmitted'
+            },
+            'feature_engineering': {
+                'apply_selection': True,
+                'n_features_to_select': 10
+            },
+            'logging': {
+                'level': 'INFO',
+                'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                'file': os.path.join(temp_dir, 'logs', 'feature_engineering.log')
+            }
+        }
+        
+        config_path = os.path.join(temp_dir, "config.yaml")
+        with open(config_path, 'w') as f:
+            yaml.dump(config, f)
+        
+        return config_path
+    
+    @pytest.fixture
+    def feature_engineer(self, sample_config):
+        """Create a FeatureEngineer instance with test config."""
+        return FeatureEngineer(sample_config)
+    
+    @pytest.fixture
+    def sample_data(self):
+        """Create sample data for testing."""
+        np.random.seed(42)
+        data = {
+            'age': ['[20-30)', '[30-40)', '[40-50)', '[50-60)', '[60-70)'],
+            'time_in_hospital': [3, 7, 5, 12, 8],
+            'num_medications': [5, 15, 10, 25, 20],
+            'number_outpatient': [0, 2, 1, 3, 2],
+            'number_emergency': [1, 0, 2, 1, 3],
+            'number_inpatient': [0, 1, 0, 2, 1],
+            'number_diagnoses': [5, 8, 6, 12, 9],
+            'diag_1': ['401.9', '250.02', '272.4', '585.6', '414.01'],
+            'diag_2': ['250.00', '401.9', '585.9', '250.02', '272.4'],
+            'diag_3': ['272.4', '585.6', '414.01', '401.9', '250.00'],
+            'change': ['No', 'Ch', 'No', 'Ch', 'No'],
+            'diabetesMed': ['No', 'Yes', 'No', 'Yes', 'No'],
+            'readmitted': ['NO', 'YES', 'NO', 'YES', 'NO']
+        }
+        return pd.DataFrame(data)
+    
+    @pytest.fixture
+    def sample_data_missing_cols(self):
+        """Create sample data with some missing columns for testing edge cases."""
+        data = {
+            'time_in_hospital': [3, 7, 5],
+            'num_medications': [5, 15, 10],
+            'readmitted': ['NO', 'YES', 'NO']
+        }
+        return pd.DataFrame(data)
+
+    # ---------- Initialization Tests ----------
+
+    def test_feature_engineer_initialization(self, sample_config):
+        """Test FeatureEngineer initialization."""
+        engineer = FeatureEngineer(sample_config)
+        assert engineer.feature_selector is None
+        assert engineer.selected_features == []
+        assert engineer.original_features == []
+        assert engineer.engineered_features == []
+        assert engineer.config is not None
+        assert engineer.logger is not None
+
+    def test_feature_engineer_initialization_missing_config(self):
+        """Test FeatureEngineer initialization with missing config."""
+        with pytest.raises(FileNotFoundError):
+            FeatureEngineer("nonexistent_config.yaml")
+
+    # ---------- Age Group Feature Tests ----------
+
+    def test_create_age_groups_basic(self, feature_engineer, sample_data):
+        """Test basic age group creation."""
+        result = feature_engineer._create_age_groups(sample_data)
+        
+        assert 'age_group' in result.columns
+        assert result['age_group'].dtype.name == 'category'
+        assert not result['age_group'].isna().any()
+        
+        # Check that all values are valid categories
+        valid_categories = ['Young', 'Adult', 'Senior', 'Elderly']
+        assert all(val in valid_categories for val in result['age_group'].cat.categories)
+
+    def test_create_age_groups_missing_column(self, feature_engineer, sample_data_missing_cols):
+        """Test age group creation with missing age column."""
+        result = feature_engineer._create_age_groups(sample_data_missing_cols)
+        
+        # Should return original data unchanged
+        assert 'age_group' not in result.columns
+        assert result.shape == sample_data_missing_cols.shape
+
+    def test_create_age_groups_invalid_values(self, feature_engineer):
+        """Test age group creation with invalid age values."""
+        data = pd.DataFrame({
+            'age': ['invalid', None, '[30-40)'],
+            'readmitted': ['NO', 'YES', 'NO']
+        })
+        
+        result = feature_engineer._create_age_groups(data)
+        
+        # Should handle invalid values gracefully
+        assert 'age_group' in result.columns
+        # At least one valid mapping should work
+        assert not result['age_group'].isna().all()
+
+    # ---------- Length of Stay Group Tests ----------
+
+    def test_create_length_of_stay_groups_basic(self, feature_engineer, sample_data):
+        """Test basic length of stay group creation."""
+        result = feature_engineer._create_length_of_stay_groups(sample_data)
+        
+        assert 'los_group' in result.columns
+        assert result['los_group'].dtype.name == 'category'
+        assert not result['los_group'].isna().any()
+        
+        # Check categories
+        valid_categories = ['Short', 'Medium', 'Long', 'Extended']
+        assert all(val in valid_categories for val in result['los_group'].cat.categories)
+
+    def test_create_length_of_stay_groups_missing_column(self, feature_engineer, sample_data_missing_cols):
+        """Test LOS group creation with missing time_in_hospital column."""
+        data = sample_data_missing_cols.drop(columns=['time_in_hospital'])
+        result = feature_engineer._create_length_of_stay_groups(data)
+        
+        # Should return original data unchanged
+        assert 'los_group' not in result.columns
+
+    def test_create_length_of_stay_groups_edge_values(self, feature_engineer):
+        """Test LOS group creation with edge values."""
+        data = pd.DataFrame({
+            'time_in_hospital': [0, 1, 3, 7, 14, 30],
+            'readmitted': ['NO', 'YES', 'NO', 'YES', 'NO', 'YES']
+        })
+        
+        result = feature_engineer._create_length_of_stay_groups(data)
+        
+        assert 'los_group' in result.columns
+        assert not result['los_group'].isna().any()
+        # Check that 30 days maps to 'Extended'
+        assert result[result['time_in_hospital'] == 30]['los_group'].iloc[0] == 'Extended'
+
+    # ---------- Total Visits Feature Tests ----------
+
+    def test_create_total_visits_basic(self, feature_engineer, sample_data):
+        """Test basic total visits creation."""
+        result = feature_engineer._create_total_visits(sample_data)
+        
+        assert 'total_visits' in result.columns
+        assert result['total_visits'].dtype in ['int64', 'float64']
+        
+        # Check calculation is correct
+        expected = (sample_data['number_outpatient'] + 
+                   sample_data['number_emergency'] + 
+                   sample_data['number_inpatient'])
+        pd.testing.assert_series_equal(result['total_visits'], expected, check_names=False)
+
+    def test_create_total_visits_missing_columns(self, feature_engineer):
+        """Test total visits creation with missing visit columns."""
+        data = pd.DataFrame({
+            'number_outpatient': [1, 2, 3],
+            'readmitted': ['NO', 'YES', 'NO']
+            # Missing number_emergency and number_inpatient
+        })
+        
+        result = feature_engineer._create_total_visits(data)
+        
+        # Should return original data unchanged
+        assert 'total_visits' not in result.columns
+
+    def test_create_total_visits_zero_values(self, feature_engineer):
+        """Test total visits creation with zero values."""
+        data = pd.DataFrame({
+            'number_outpatient': [0, 0, 0],
+            'number_emergency': [0, 0, 0],
+            'number_inpatient': [0, 0, 0],
+            'readmitted': ['NO', 'YES', 'NO']
+        })
+        
+        result = feature_engineer._create_total_visits(data)
+        
+        assert 'total_visits' in result.columns
+        assert all(result['total_visits'] == 0)
+
+    # ---------- Medication Intensity Feature Tests ----------
+
+    def test_create_medication_intensity_basic(self, feature_engineer, sample_data):
+        """Test basic medication intensity creation."""
+        result = feature_engineer._create_medication_intensity(sample_data)
+        
+        assert 'medication_intensity' in result.columns
+        assert result['medication_intensity'].dtype in ['float64']
+        
+        # Check calculation is correct (avoiding division by zero)
+        expected = sample_data['num_medications'] / sample_data['time_in_hospital'].replace(0, 1)
+        pd.testing.assert_series_equal(result['medication_intensity'], expected, check_names=False)
+
+    def test_create_medication_intensity_zero_hospital_time(self, feature_engineer):
+        """Test medication intensity with zero hospital time."""
+        data = pd.DataFrame({
+            'num_medications': [10, 5, 15],
+            'time_in_hospital': [0, 1, 2],
+            'readmitted': ['NO', 'YES', 'NO']
+        })
+        
+        result = feature_engineer._create_medication_intensity(data)
+        
+        assert 'medication_intensity' in result.columns
+        # First row should use 1 instead of 0 for division
+        assert result['medication_intensity'].iloc[0] == 10.0  # 10/1
+        assert result['medication_intensity'].iloc[1] == 5.0   # 5/1
+        assert result['medication_intensity'].iloc[2] == 7.5   # 15/2
+
+    def test_create_medication_intensity_missing_columns(self, feature_engineer):
+        """Test medication intensity with missing columns."""
+        data = pd.DataFrame({
+            'num_medications': [10, 5, 15],
+            'readmitted': ['NO', 'YES', 'NO']
+            # Missing time_in_hospital
+        })
+        
+        result = feature_engineer._create_medication_intensity(data)
+        
+        # Should return original data unchanged
+        assert 'medication_intensity' not in result.columns
+
+    # ---------- Binary Flags Tests ----------
+
+    def test_create_binary_flags_basic(self, feature_engineer, sample_data):
+        """Test basic binary flags creation."""
+        result = feature_engineer._create_binary_flags(sample_data)
+        
+        expected_flags = [
+            'has_emergency_visits', 'was_medicated', 'many_diagnoses',
+            'medication_changed', 'uses_diabetes_med'
+        ]
+        
+        for flag in expected_flags:
+            if flag in result.columns:  # Only check flags that were created
+                assert result[flag].dtype in ['int64', 'uint8']
+                assert set(result[flag].unique()).issubset({0, 1})
+
+    def test_create_binary_flags_edge_cases(self, feature_engineer):
+        """Test binary flags with edge case values."""
+        data = pd.DataFrame({
+            'number_emergency': [0, 1, 5],
+            'num_medications': [0, 1, 10],
+            'number_diagnoses': [8, 9, 15],
+            'change': ['No', 'Ch', 'No'],
+            'diabetesMed': ['No', 'Yes', 'No'],
+            'readmitted': ['NO', 'YES', 'NO']
+        })
+        
+        result = feature_engineer._create_binary_flags(data)
+        
+        # Check specific logic
+        if 'has_emergency_visits' in result.columns:
+            assert result['has_emergency_visits'].iloc[0] == 0  # 0 emergency visits
+            assert result['has_emergency_visits'].iloc[1] == 1  # 1 emergency visit
+            assert result['has_emergency_visits'].iloc[2] == 1  # 5 emergency visits
+        
+        if 'many_diagnoses' in result.columns:
+            assert result['many_diagnoses'].iloc[0] == 0  # 8 diagnoses
+            assert result['many_diagnoses'].iloc[1] == 1  # 9 diagnoses
+            assert result['many_diagnoses'].iloc[2] == 1  # 15 diagnoses
+
+    # ---------- Diagnosis Features Tests ----------
+
+    def test_create_diagnosis_features_basic(self, feature_engineer, sample_data):
+        """Test basic diagnosis features creation."""
+        result = feature_engineer._create_diagnosis_features(sample_data)
+        
+        # Check that diagnosis features are created
+        possible_features = ['has_diabetes_diagnosis', 'has_circulatory_diagnosis']
+        created_features = [f for f in possible_features if f in result.columns]
+        
+        assert len(created_features) > 0  # At least one feature should be created
+        
+        for feature in created_features:
+            assert result[feature].dtype in ['int64', 'uint8']
+            assert set(result[feature].unique()).issubset({0, 1})
+
+    def test_create_diagnosis_features_diabetes_detection(self, feature_engineer):
+        """Test diabetes diagnosis detection."""
+        data = pd.DataFrame({
+            'diag_1': ['250.02', '401.9', '272.4'],
+            'diag_2': ['401.9', '250.00', '585.6'],
+            'diag_3': ['272.4', '585.6', '250.99'],
+            'readmitted': ['NO', 'YES', 'NO']
+        })
+        
+        result = feature_engineer._create_diagnosis_features(data)
+        
+        if 'has_diabetes_diagnosis' in result.columns:
+            # All rows should have diabetes diagnosis (250.xx codes)
+            assert all(result['has_diabetes_diagnosis'] == 1)
+
+    def test_create_diagnosis_features_circulatory_detection(self, feature_engineer):
+        """Test circulatory diagnosis detection."""
+        data = pd.DataFrame({
+            'diag_1': ['401.9', '250.02', '272.4'],  # 401.9 is circulatory
+            'diag_2': ['250.02', '401.9', '585.6'], # 401.9 is circulatory
+            'diag_3': ['272.4', '585.6', '414.01'], # 414.01 is circulatory
+            'readmitted': ['NO', 'YES', 'NO']
+        })
+        
+        result = feature_engineer._create_diagnosis_features(data)
+        
+        if 'has_circulatory_diagnosis' in result.columns:
+            # All rows should have circulatory diagnosis (390-459 range)
+            assert all(result['has_circulatory_diagnosis'] == 1)
+
+    def test_create_diagnosis_features_missing_columns(self, feature_engineer):
+        """Test diagnosis features with missing diagnosis columns."""
+        data = pd.DataFrame({
+            'some_other_column': [1, 2, 3],
+            'readmitted': ['NO', 'YES', 'NO']
+        })
+        
+        result = feature_engineer._create_diagnosis_features(data)
+        
+        # Should return original data unchanged
+        diagnosis_features = ['has_diabetes_diagnosis', 'has_circulatory_diagnosis']
+        for feature in diagnosis_features:
+            assert feature not in result.columns
+
+    # ---------- Feature Selection Tests ----------
+
+    def test_apply_feature_selection_basic(self, feature_engineer, sample_data):
+        """Test basic feature selection."""
+        # Create some features first - use ONLY numerical features for this test
+        X = pd.DataFrame({
+            'feature_1': [1.0, 2.0, 3.0, 4.0, 5.0],
+            'feature_2': [2.0, 3.0, 4.0, 5.0, 6.0],
+            'feature_3': [3.0, 4.0, 5.0, 6.0, 7.0],
+            'feature_4': [4.0, 5.0, 6.0, 7.0, 8.0],
+            'feature_5': [5.0, 6.0, 7.0, 8.0, 9.0]
+        })
+        y = pd.Series([0, 1, 0, 1, 0])
+        
+        # Add more numerical features to have more than 10
+        for i in range(6, 16):
+            X[f'feature_{i}'] = np.random.randn(len(X))
+        
+        result = feature_engineer._apply_feature_selection(X, y)
+        
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape[1] == 10  # Should select 10 features
+        assert len(feature_engineer.selected_features) == 10
+
+    def test_apply_feature_selection_fewer_than_k(self, feature_engineer):
+        """Test feature selection when fewer features than k exist."""
+        X = pd.DataFrame({
+            'feature1': [1, 2, 3, 4, 5],
+            'feature2': [2, 3, 4, 5, 6],
+            'feature3': [3, 4, 5, 6, 7]
+        })
+        y = pd.Series([0, 1, 0, 1, 0])
+        
+        result = feature_engineer._apply_feature_selection(X, y)
+        
+        # Should return all features since 3 < 10
+        assert result.shape[1] == 3
+        assert list(result.columns) == ['feature1', 'feature2', 'feature3']
+
+    def test_apply_feature_selection_disabled(self, feature_engineer):
+        """Test feature selection when disabled in config."""
+        # Modify config to disable feature selection
+        feature_engineer.config['feature_engineering']['n_features_to_select'] = None
+        
+        X = pd.DataFrame(np.random.randn(10, 15), columns=[f'feat_{i}' for i in range(15)])
+        y = pd.Series([0, 1] * 5)
+        
+        result = feature_engineer._apply_feature_selection(X, y)
+        
+        # Should return all features
+        assert result.shape[1] == 15
+        assert len(feature_engineer.selected_features) == 15
+
+    # ---------- Main Pipeline Tests ----------
+
+    def test_fit_transform_basic(self, feature_engineer, sample_data, temp_dir):
+        """Test basic fit_transform functionality."""
+        # Change to temp directory for report creation
+        original_cwd = os.getcwd()
+        os.chdir(temp_dir)
+        
+        try:
+            X_result, y_result = feature_engineer.fit_transform(sample_data)
+            
+            # Check output types
+            assert isinstance(X_result, pd.DataFrame)
+            assert isinstance(y_result, pd.Series)
+            
+            # Check that features were created
+            assert len(feature_engineer.engineered_features) > 0
+            assert len(feature_engineer.selected_features) > 0
+            
+            # Check that target is unchanged
+            pd.testing.assert_series_equal(y_result, sample_data['readmitted'], check_names=False)
+            
+            # Check report generation
+            assert 'timestamp' in feature_engineer.report
+            assert 'original_shape' in feature_engineer.report
+            assert 'engineering_completed' in feature_engineer.report
+            
+        finally:
+            os.chdir(original_cwd)
+
+    def test_fit_transform_empty_data(self, feature_engineer):
+        """Test fit_transform with empty DataFrame."""
+        empty_df = pd.DataFrame()
+        with pytest.raises(ValueError, match="Cannot perform feature engineering on empty DataFrame"):
+            feature_engineer.fit_transform(empty_df)
+
+    def test_fit_transform_missing_target(self, feature_engineer, sample_data):
+        """Test fit_transform with missing target column."""
+        data_no_target = sample_data.drop(columns=['readmitted'])
+        with pytest.raises(KeyError, match="Target column 'readmitted' not found"):
+            feature_engineer.fit_transform(data_no_target)
+
+    def test_transform_after_fit(self, feature_engineer, sample_data):
+        """Test transform after fitting."""
+        # Fit first
+        feature_engineer.fit_transform(sample_data)
+        
+        # Create new data for transform
+        new_data = sample_data.copy()
+        new_data.iloc[0, 0] = '[70-80)'  # Change first age value
+        
+        # Transform
+        X_result, y_result = feature_engineer.transform(new_data)
+        
+        # Check output types
+        assert isinstance(X_result, pd.DataFrame)
+        assert isinstance(y_result, pd.Series)
+        
+        # Check that same features are present
+        assert X_result.shape[1] == len(feature_engineer.selected_features)
+
+    def test_transform_without_fit(self, feature_engineer, sample_data):
+        """Test transform without fitting first."""
+        # This should work since transform doesn't require prior fitting
+        # (it applies the same transformations)
+        X_result, y_result = feature_engineer.transform(sample_data)
+        assert isinstance(X_result, pd.DataFrame)
+        assert isinstance(y_result, pd.Series)
+
+    # ---------- Utility Methods Tests ----------
+
+    def test_get_feature_names_after_fit(self, feature_engineer, sample_data):
+        """Test getting feature names after fitting."""
+        feature_engineer.fit_transform(sample_data)
+        feature_names = feature_engineer.get_feature_names()
+        
+        assert isinstance(feature_names, list)
+        assert len(feature_names) > 0
+        assert feature_names == feature_engineer.selected_features
+
+    def test_get_feature_names_before_fit(self, feature_engineer):
+        """Test getting feature names before fitting."""
+        with pytest.raises(ValueError, match="Pipeline not fitted yet"):
+            feature_engineer.get_feature_names()
+
+    def test_get_engineered_features(self, feature_engineer, sample_data):
+        """Test getting engineered feature names."""
+        feature_engineer.fit_transform(sample_data)
+        engineered_features = feature_engineer.get_engineered_features()
+        
+        assert isinstance(engineered_features, list)
+        assert len(engineered_features) > 0
+        assert engineered_features == feature_engineer.engineered_features
+
+    # ---------- Edge Cases and Error Handling Tests ----------
+
+    def test_feature_engineering_with_minimal_data(self, feature_engineer):
+        """Test feature engineering with minimal required data."""
+        minimal_data = pd.DataFrame({
+            'readmitted': ['NO', 'YES']
+        })
+        
+        X_result, y_result = feature_engineer.fit_transform(minimal_data)
+        
+        # Should handle gracefully even with minimal data
+        assert isinstance(X_result, pd.DataFrame)
+        assert isinstance(y_result, pd.Series)
+
+    def test_feature_engineering_consistency(self, feature_engineer, sample_data):
+        """Test that feature engineering is consistent across multiple runs."""
+        # Run twice with same data
+        X1, y1 = feature_engineer.fit_transform(sample_data.copy())
+        
+        # Reset the feature engineer
+        feature_engineer.feature_selector = None
+        feature_engineer.selected_features = []
+        feature_engineer.original_features = []
+        feature_engineer.engineered_features = []
+        
+        X2, y2 = feature_engineer.fit_transform(sample_data.copy())
+        
+        # Results should be identical
+        pd.testing.assert_frame_equal(X1, X2)
+        pd.testing.assert_series_equal(y1, y2)
+
+    def test_report_generation(self, feature_engineer, sample_data, temp_dir):
+        """Test that feature engineering report is generated correctly."""
+        # Change to temp directory for report file creation
+        original_cwd = os.getcwd()
+        os.chdir(temp_dir)
+        
+        try:
+            # Run feature engineering
+            feature_engineer.fit_transform(sample_data)
+            
+            # Check that report file was created
+            assert Path("logs/feature_engineering_report.json").exists()
+            
+            # Check that report contains expected keys
+            assert 'timestamp' in feature_engineer.report
+            assert 'original_shape' in feature_engineer.report
+            assert 'target_column' in feature_engineer.report
+            assert 'engineering_completed' in feature_engineer.report
+            assert 'engineered_features' in feature_engineer.report
+            assert 'selected_features' in feature_engineer.report
+            
+        finally:
+            os.chdir(original_cwd)
+
+
+if __name__ == "__main__":
+    """Demonstrate FeatureEngineer testing functionality."""
+    print("Feature engineering test module loaded successfully.")
+    print("Run with: pytest tests/test_feature_engineering.py -v")

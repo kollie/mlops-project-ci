@@ -182,6 +182,10 @@ preprocessing:
     categorical: "onehot"
     target: "label"
 
+feature_engineering:
+  apply_selection: true
+  n_features_to_select: 20
+
 # Training parameters
 training:
   batch_size: 32
