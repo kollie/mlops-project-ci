@@ -50,4 +50,6 @@ data/**/*.csv
 data/**/*.json
 !data/raw/diabetic_readmission_data.csv
 
+!notebooks/Final_Basic_Solution_Python.ipynb
+
 .coverage
