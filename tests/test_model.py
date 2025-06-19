@@ -341,11 +341,9 @@ class TestModelTrainer:
         assert os.path.exists(custom_path)
 
     def test_get_feature_importance_without_fit(self, model_trainer):
-        """Test feature importance without fitting first."""
-        # The method returns empty DataFrame when not fitted (defensive programming)
-        importance_df = model_trainer.get_feature_importance()
-        assert isinstance(importance_df, pd.DataFrame)
-        assert len(importance_df) == 0  # Should be empty
+        """Test getting feature importance before fitting the model."""
+        with pytest.raises(ValueError, match="Model must be fitted"):
+            model_trainer.get_feature_importance()
 
     def test_load_model_basic(self, model_trainer, sample_data, temp_dir):
         """Test basic model loading."""
