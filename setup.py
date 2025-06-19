@@ -15,4 +15,4 @@ setup(
         "tqdm>=4.64.0",
     ],
     python_requires=">=3.8",
-) 
+)
