@@ -127,6 +127,7 @@ class DataValidator:
                 return True
 
             type_issues = {}
+            converted_columns = []
 
             # Check numerical features
             for col in self.config["features"].get("numerical_features", []):
@@ -137,12 +138,22 @@ class DataValidator:
 
             # Check categorical features
             for col in self.config["features"].get("categorical_features", []):
-                if col in data.columns and not (
-                    pd.api.types.is_string_dtype(data[col])
-                    or pd.api.types.is_categorical_dtype(data[col])
-                    or pd.api.types.is_object_dtype(data[col])
-                ):
-                    type_issues[col] = f"Expected categorical, got {data[col].dtype}"
+                if col in data.columns:
+                    if not (
+                        pd.api.types.is_string_dtype(data[col])
+                        or pd.api.types.is_categorical_dtype(data[col])
+                        or pd.api.types.is_object_dtype(data[col])
+                    ):
+                        # If it's an integer but should be categorical, convert it
+                        if np.issubdtype(data[col].dtype, np.integer):
+                            self.logger.info(f"Converting integer column '{col}' to string for categorical treatment")
+                            data[col] = data[col].astype(str)
+                            converted_columns.append(col)
+                        else:
+                            type_issues[col] = f"Expected categorical, got {data[col].dtype}"
+
+            if converted_columns:
+                self.logger.info(f"Converted columns to string: {converted_columns}")
 
             if type_issues:
                 self.logger.error(f"Data type validation failed: {type_issues}")
@@ -151,6 +162,7 @@ class DataValidator:
 
             self.logger.info("Data type validation passed.")
             self.report["data_types_valid"] = True
+            self.report["converted_columns"] = converted_columns
             return True
 
         except Exception as e:
@@ -396,13 +408,13 @@ class DataValidator:
             ].index
 
             if len(high_missing_cols) > 0:
-                self.logger.warning(
+                self.logger.info(
                     f"🗑️  Dropping {len(high_missing_cols)} columns with >{threshold*100}% missing values:"
                 )
                 for col in high_missing_cols:
                     missing_count = missing_summary[col]
                     missing_pct = missing_ratios[col] * 100
-                    self.logger.warning(
+                    self.logger.info(
                         f"   - Column '{col}': {missing_count}/{len(data)} missing ({missing_pct:.1f}%)"
                     )
 

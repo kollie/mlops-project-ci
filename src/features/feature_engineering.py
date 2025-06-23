@@ -90,7 +90,7 @@ class FeatureEngineer:
         """Create age group categorical feature."""
         try:
             if "age" not in data.columns:
-                self.logger.warning(
+                self.logger.info(
                     "'age' column not found, skipping age group creation"
                 )
                 return data
@@ -134,7 +134,7 @@ class FeatureEngineer:
         """Create length of stay categorical feature."""
         try:
             if "time_in_hospital" not in data.columns:
-                self.logger.warning(
+                self.logger.info(
                     "'time_in_hospital' column not found, skipping LOS groups"
                 )
                 return data
@@ -165,7 +165,7 @@ class FeatureEngineer:
             missing_cols = [col for col in visit_columns if col not in data.columns]
 
             if missing_cols:
-                self.logger.warning(
+                self.logger.info(
                     f"Missing visit columns {missing_cols}, skipping total visits"
                 )
                 return data
@@ -187,7 +187,7 @@ class FeatureEngineer:
             missing_cols = [col for col in required_cols if col not in data.columns]
 
             if missing_cols:
-                self.logger.warning(
+                self.logger.info(
                     f"Missing columns {missing_cols}, skipping medication intensity"
                 )
                 return data
@@ -254,7 +254,7 @@ class FeatureEngineer:
             available_diag_cols = [col for col in diag_columns if col in data.columns]
 
             if not available_diag_cols:
-                self.logger.warning(
+                self.logger.info(
                     "No diagnosis columns found, skipping diagnosis features"
                 )
                 return data
