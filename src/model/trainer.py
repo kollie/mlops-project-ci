@@ -131,9 +131,13 @@ class ModelTrainer:
         """Create model instance based on configuration."""
         try:
             model_config = self.config.get("model", {})
-            self.model_type = model_config.get("active", "random_forest")
-            
-            if self.model_type == "random_forest":
+            # Support both 'active' and 'type' for model type
+            self.model_type = model_config.get("active") or model_config.get("type", "random_forest")
+
+            # Support both 'parameters' and model-specific blocks
+            if "parameters" in model_config:
+                self.model_params = model_config["parameters"]
+            elif self.model_type == "random_forest":
                 self.model_params = model_config.get("random_forest", {})
             elif self.model_type == "logistic_regression":
                 self.model_params = model_config.get("logistic_regression", {})
@@ -374,6 +378,11 @@ class ModelTrainer:
             # Save the complete model data
             joblib.dump(model_data, model_path)
 
+            # Save metadata as a separate JSON file (for test compatibility)
+            metadata_path = model_path.replace(".joblib", "_metadata.json")
+            with open(metadata_path, "w") as f:
+                json.dump(model_data["metadata"], f, indent=2, default=str)
+
             # Log model artifact to wandb
             if self.wandb_run:
                 # Create a wandb artifact for the model
@@ -431,16 +440,15 @@ class ModelTrainer:
             if not os.path.exists(model_path):
                 raise FileNotFoundError(f"Model file not found: {model_path}")
 
-            self.model = joblib.load(model_path)
+            model_data = joblib.load(model_path)
+            if isinstance(model_data, dict) and "model" in model_data:
+                self.model = model_data["model"]
+                self.feature_engineer = model_data.get("feature_engineer")
+                self.model_type = model_data.get("metadata", {}).get("model_type", "unknown")
+                self.model_params = model_data.get("metadata", {}).get("model_parameters", {})
+            else:
+                self.model = model_data
             self._is_fitted = True
-
-            metadata_path = model_path.replace(".joblib", "_metadata.json")
-            if os.path.exists(metadata_path):
-                with open(metadata_path, "r") as f:
-                    metadata = json.load(f)
-
-                self.model_type = metadata.get("model_type", "unknown")
-                self.model_params = metadata.get("model_parameters", {})
 
             self.logger.info(f"Model loaded from: {model_path}")
 
