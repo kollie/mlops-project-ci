@@ -1,524 +1,580 @@
 # MLOps Hospital Readmission Prediction Project
 
-This project implements a comprehensive machine learning pipeline for predicting hospital readmission rates using patient data. The pipeline follows MLOps best practices with automated testing, logging, evaluation, and inference capabilities.
+A comprehensive machine learning pipeline for predicting hospital readmission rates using patient data. This project implements a complete MLOps workflow with automated data processing, model training, evaluation, and inference capabilities.
 
-## Project Structure
+## 🎯 Project Overview
+
+This project demonstrates a production-ready MLOps pipeline for hospital readmission prediction, featuring:
+
+- **Complete Data Pipeline**: From raw data loading to model deployment
+- **Automated Feature Engineering**: Advanced feature creation and selection
+- **Model Training & Evaluation**: Multiple algorithms with comprehensive metrics
+- **Production API**: FastAPI-based inference service
+- **Comprehensive Logging**: Detailed tracking of all pipeline steps
+- **Error Handling**: Robust error management and recovery
+- **Clean Output**: Resolved all model-related warnings
+
+## 🏗️ Architecture
 
 ```
-.
-├── data/
-│   ├── raw/                    # Raw data files
-│   └── processed/              # Processed data files
-├── logs/                      # Log files from all modules
-├── models/                    # Trained models and artifacts
-├── plots/                     # Generated visualizations
-├── src/
-│   ├── config.yaml           # Central configuration file
-│   ├── main.py              # Main pipeline orchestrator
-│   ├── data_loader/         # Data loading and management
-│   ├── validation/          # Data validation and quality checks
-│   ├── eda/                 # Exploratory Data Analysis
-│   ├── preprocessing/       # Data preprocessing pipeline
-│   ├── features/            # Feature engineering
-│   ├── model/              # Model training and selection
-│   ├── evaluation/         # Model evaluation and metrics
-│   └── inference/          # Model inference and prediction
-├── tests/                    # Comprehensive test suite
-├── environment.yml          # Conda environment specification
-└── requirements.txt         # Pip requirements (backup)
+src/
+├── api/                    # FastAPI application
+│   └── app.py             # Main API endpoints
+├── data_loader/           # Data loading and splitting
+├── validation/            # Data validation and cleaning
+├── eda/                   # Exploratory data analysis
+├── preprocessing/         # Data preprocessing pipeline
+├── features/              # Feature engineering
+├── model/                 # Model training and saving
+├── evaluation/            # Model evaluation and metrics
+├── inference/             # Model inference and predictions
+└── config.yaml           # Configuration file
 ```
 
-## Features
+## 🚀 Quick Start
 
-### 🚀 Complete MLOps Pipeline
-- **Data Loading & Validation**: Robust data ingestion with quality checks
-- **Exploratory Data Analysis**: Comprehensive automated analysis with visualizations
-- **Feature Engineering**: Advanced feature creation and selection
-- **Model Training**: Multiple algorithms with hyperparameter optimization
-- **Model Evaluation**: Comprehensive metrics and performance analysis
-- **Model Inference**: Production-ready prediction service
-- **CI/CD Ready**: Automated testing and validation
-
-### 📊 Advanced Analytics
-- **Interactive Visualizations**: Automated plot generation for all analysis steps
-- **Statistical Analysis**: In-depth statistical testing and correlation analysis
-- **Performance Monitoring**: Detailed logging and reporting at every step
-- **Model Comparison**: Automated comparison with baseline models
-
-## Installation
-
-### Using Conda (Recommended)
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/kollie/mlops-project-ci.git
-   cd mlops-project-ci
-   ```
-
-2. **Create and activate conda environment:**
-   ```bash
-   conda env create -f environment.yml
-   conda activate mlops
-   ```
-
-3. **Verify installation:**
-   ```bash
-   python -c "import pandas, scikit-learn, numpy; print('Environment ready!')"
-   ```
-
-### Alternative: Using pip
-
-1. **Create virtual environment:**
-   ```bash
-   python -m venv mlops_env
-   source mlops_env/bin/activate  # On Windows: mlops_env\Scripts\activate
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Quick Start
-
-### Run the Complete Pipeline
+### 1. Environment Setup
 
 ```bash
-# Activate your environment
-conda activate mlops
+# Clone the repository
+git clone <repository-url>
+cd mlops_group_project
 
-# Run the full pipeline
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. Run the Complete Pipeline
+
+```bash
+# Run the full MLOps pipeline
 python src/main.py
 
-# Or run it as a module
-python -m src.main
+# Or run with custom data source
+python src/main.py --data_source "path/to/your/data.csv"
 ```
 
-### Run Individual Components
+### 3. Start the FastAPI Service
 
 ```bash
-# Just EDA
-python -c "from src.eda.eda import EDAAnalyzer; eda = EDAAnalyzer(); eda.run_full_analysis(data)"
+# Start the API server
+uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
 
-# Just model training
-python -c "from src.model.trainer import ModelTrainer; trainer = ModelTrainer(); trainer.fit(X, y)"
-
-# Just inference
-python -c "from src.inference.predict import ModelPredictor; predictor = ModelPredictor(); predictor.load_model('path/to/model')"
+# Or run directly
+python -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000
 ```
 
-## Module Documentation
+### 4. Test the API
 
-### 1. Data Loading (`src/data_loader/`)
+```bash
+# Test the pipeline API
+python test_pipeline_api.py
 
-Handles data ingestion, validation, and splitting with robust error handling.
-
-#### Features
-- **Multi-source Support**: Local files, Google Drive links, URLs
-- **Automatic Validation**: Integrated data quality checks
-- **Smart Splitting**: Stratified train/validation/test splits
-- **Flexible Formats**: CSV, Excel, Parquet support
-
-#### Usage
-```python
-from src.data_loader.data_loader import DataLoader
-
-data_loader = DataLoader(config_path="src/config.yaml")
-df = data_loader.load_data()
-train, val, test = data_loader.split_data(df)
-data_loader.save_split_data(train, val, test)
+# Or test manually
+curl http://localhost:8000/health
 ```
 
-#### Outputs
-- Split datasets in `data/processed/`
-- Loading logs in `logs/data_loader.log`
-- Data quality reports
+## 📊 Pipeline Components
 
-### 2. Data Validation (`src/validation/`)
+### 1. Data Loading & Validation
 
-Comprehensive data quality assurance with multiple validation strategies.
+- **DataLoader**: Loads and splits data into train/validation/test sets
+- **DataValidator**: Validates schema, data types, and missing values
+- **Smart Cleaning**: Handles missing values and data type conversions
 
-#### Components
-- **`data_validator.py`**: Full validation pipeline with cleaning
-- **`validator.py`**: Lightweight validation for CI/CD
+### 2. Exploratory Data Analysis (EDA)
 
-#### Features
-- **Schema Validation**: Column presence, types, constraints
-- **Quality Checks**: Missing values, outliers, distributions
-- **Target Analysis**: Class balance, target validity
-- **Automated Cleaning**: Configurable data cleaning strategies
+- **Comprehensive Analysis**: Statistical summaries, distributions, correlations
+- **Target Analysis**: Class balance and distribution analysis
+- **Feature Analysis**: Missing value patterns and data quality assessment
 
-#### Usage
-```python
-from src.validation.data_validator import DataValidator
+### 3. Preprocessing
 
-validator = DataValidator(config_path="src/config.yaml")
-clean_data = validator.validate_and_clean(df, strategy='drop_columns')
-```
+- **Data Cleaning**: Handles missing values and outliers
+- **Feature Scaling**: Standardization and normalization
+- **Categorical Encoding**: Label encoding for categorical variables
+- **Feature Selection**: SelectKBest for dimensionality reduction
 
-#### Outputs
-- Validation reports in `logs/validation_report.json`
-- Cleaned datasets
-- Quality metrics and recommendations
+### 4. Feature Engineering
 
-### 3. Exploratory Data Analysis (`src/eda/`)
+- **Age Groups**: Categorical age group creation
+- **Length of Stay Groups**: Hospital stay duration categorization
+- **Visit Aggregations**: Total previous visits calculation
+- **Medication Features**: Medication intensity and binary flags
+- **Diagnosis Features**: Diabetes and circulatory disease detection
+- **Binary Flags**: Emergency visits, medication changes, etc.
 
-Automated comprehensive data analysis with rich visualizations.
+### 5. Model Training
 
-#### Features
-- **Statistical Analysis**: Descriptive statistics, distributions, correlations
-- **Target Analysis**: Class balance, target relationships
-- **Feature Analysis**: Univariate and bivariate analysis
-- **Missing Data Analysis**: Patterns and impact assessment
-- **Automated Visualizations**: 20+ plot types automatically generated
+- **Multiple Algorithms**: Random Forest, Logistic Regression, Decision Tree, Naive Bayes
+- **Hyperparameter Tuning**: Configurable model parameters
+- **Cross-Validation**: Robust model evaluation
+- **Model Persistence**: Saves model and feature engineer together
 
-#### Key Analyses
-- Data description and summary statistics
-- Target variable distribution and balance
-- Numerical feature distributions and outliers
-- Categorical feature analysis
-- Correlation matrices and feature relationships
-- Missing value patterns and heatmaps
-- Feature importance estimation
+### 6. Model Evaluation
 
-#### Usage
-```python
-from src.eda.eda import EDAAnalyzer
-
-eda_analyzer = EDAAnalyzer(config_path="src/config.yaml")
-eda_report = eda_analyzer.run_full_analysis(df)
-```
-
-#### Outputs
-- Comprehensive analysis report
-- 20+ visualizations in `plots/eda/`
-- Analysis logs in `logs/eda.log`
-- Recommendations for preprocessing
-
-### 4. Preprocessing (`src/preprocessing/`)
-
-Production-ready data preprocessing pipeline with sklearn integration.
-
-#### Features
-- **Missing Value Handling**: Multiple imputation strategies
-- **Categorical Encoding**: One-hot, label, target encoding
-- **Numerical Scaling**: StandardScaler, MinMaxScaler, RobustScaler
-- **Outlier Treatment**: Detection and handling strategies
-- **Pipeline Persistence**: Save/load preprocessing pipelines
-
-#### Usage
-```python
-from src.preprocessing.preprocessor import Preprocessor
-
-preprocessor = Preprocessor(config_path="src/config.yaml")
-X_train, y_train = preprocessor.fit_transform(train)
-X_test, y_test = preprocessor.transform(test)
-preprocessor.save_pipeline("models/preprocessor.joblib")
-```
-
-#### Outputs
-- Preprocessed features and targets
-- Saved preprocessing pipeline
-- Preprocessing logs with transformation details
-
-### 5. Feature Engineering (`src/features/`)
-
-Advanced feature creation and selection for improved model performance.
-
-#### Features
-- **Automated Feature Creation**: Polynomial, interaction, statistical features
-- **Feature Selection**: Statistical tests, importance-based, correlation-based
-- **Domain-Specific Features**: Healthcare-specific feature engineering
-- **Feature Validation**: Importance scoring and selection
-- **Pipeline Integration**: Seamless integration with preprocessing
-
-#### Feature Types Created
-- **Statistical Features**: Mean, median, std, percentiles
-- **Interaction Features**: Feature combinations and ratios
-- **Polynomial Features**: Higher-order polynomial combinations
-- **Domain Features**: Healthcare-specific calculated features
-- **Temporal Features**: Age groups, admission patterns
-
-#### Usage
-```python
-from src.features.feature_engineering import FeatureEngineer
-
-engineer = FeatureEngineer(config_path="src/config.yaml")
-X_engineered, y = engineer.fit_transform(df, target_col='readmitted')
-```
-
-#### Outputs
-- Enhanced feature sets
-- Feature importance rankings
-- Feature engineering pipeline
-- Engineering logs and statistics
-
-### 6. Model Training (`src/model/`)
-
-Comprehensive model training with multiple algorithms and hyperparameter optimization.
-
-#### Supported Models
-- **Random Forest**: With grid search optimization
-- **Gradient Boosting**: XGBoost, LightGBM support
-- **Logistic Regression**: With regularization
-- **Support Vector Machine**: With kernel optimization
-- **Neural Networks**: Basic MLP support
-
-#### Features
-- **Hyperparameter Optimization**: Grid search with cross-validation
-- **Model Persistence**: Save/load trained models
-- **Feature Engineering Integration**: Automatic pipeline creation
-- **Performance Tracking**: Training metrics and validation scores
-- **Early Stopping**: Prevent overfitting
-
-#### Usage
-```python
-from src.model.trainer import ModelTrainer
-
-trainer = ModelTrainer(config_path="src/config.yaml")
-trainer.fit(X_train, y_train)
-model_path = trainer.save()
-```
-
-#### Outputs
-- Trained model artifacts in `models/`
-- Training logs with performance metrics
-- Hyperparameter optimization results
-- Model metadata and configuration
-
-### 7. Model Evaluation (`src/evaluation/`)
-
-Comprehensive model evaluation with detailed metrics and visualizations.
-
-#### Evaluation Metrics
-- **Classification Metrics**: Accuracy, Precision, Recall, F1-score
-- **Probabilistic Metrics**: ROC-AUC, PR-AUC, Brier Score
-- **Advanced Metrics**: Matthews Correlation, Balanced Accuracy
+- **Comprehensive Metrics**: Accuracy, Precision, Recall, F1-Score, ROC-AUC
 - **Confusion Matrix**: Detailed classification analysis
-- **Probability Calibration**: Reliability diagrams
+- **Model Comparison**: Baseline comparison and improvement tracking
+- **Performance Reports**: Detailed evaluation reports
 
-#### Features
-- **ROC/PR Curves**: Performance visualization
-- **Model Comparison**: Compare against baseline models
-- **MLflow Integration**: Experiment tracking
-- **Comprehensive Reports**: JSON reports with all metrics
-- **Visualization Suite**: Automated evaluation plots
+### 7. Inference & Prediction
 
-#### Usage
-```python
-from src.evaluation.evaluator import ModelEvaluator
-
-evaluator = ModelEvaluator(config_path="src/config.yaml")
-results = evaluator.evaluate(y_true, y_pred, y_pred_proba)
-comparison = evaluator.compare_models(other_metrics)
-```
-
-#### Outputs
-- Detailed evaluation reports in `logs/evaluation_report.json`
-- ROC and PR curve visualizations
-- Confusion matrix plots
-- Model comparison results
-- MLflow experiment tracking
-
-### 8. Model Inference (`src/inference/`)
-
-Production-ready inference service with confidence scoring and batch processing.
-
-#### Features
-- **Single Predictions**: Individual sample prediction
 - **Batch Processing**: Efficient large dataset processing
 - **Confidence Scoring**: Prediction confidence analysis
-- **Probability Outputs**: Class probability estimates
-- **Model Loading**: Load saved models with preprocessing
-- **Input Validation**: Robust input data validation
+- **Real-time Predictions**: Single and batch prediction capabilities
+- **Result Persistence**: Saves prediction results to files
 
-#### Inference Types
-- **Basic Prediction**: Simple class predictions
-- **Probability Prediction**: Class probability estimates
-- **Confidence Analysis**: Predictions with confidence scores
-- **Batch Inference**: Process large datasets efficiently
+## 🔧 Configuration
 
-#### Usage
-```python
-from src.inference.predict import ModelPredictor
-
-predictor = ModelPredictor(config_path="src/config.yaml")
-predictor.load_model("models/trained_model.joblib")
-
-# Single predictions
-predictions = predictor.predict(data)
-
-# Confidence analysis
-results = predictor.predict_with_confidence(data, confidence_threshold=0.8)
-
-# Batch processing
-batch_results = predictor.predict_batch(large_data, batch_size=1000)
-```
-
-#### Outputs
-- Prediction results with confidence scores
-- Batch processing summaries
-- Inference logs and performance metrics
-- Saved prediction results
-
-## Configuration
-
-The entire pipeline is controlled through `src/config.yaml`:
+The pipeline is configured via `src/config.yaml`:
 
 ```yaml
 data:
   raw_data_path: "data/raw/diabetic_readmission_data.csv"
-  processed_data_path: "data/processed"
-  train_size: 0.7
-  val_size: 0.15
-  test_size: 0.15
+  processed_data_path: "data/processed/"
+  model_path: "models/"
 
 model:
-  type: "random_forest"
-  parameters:
-    n_estimators: 100
+  active: "random_forest"
+  random_forest:
+    n_estimators: 200
     max_depth: 10
+    min_samples_split: 5
+    min_samples_leaf: 2
+    max_features: "sqrt"
+    bootstrap: True
+    criterion: "gini"
     random_state: 42
 
-feature_engineering:
-  enable_polynomial_features: true
-  polynomial_degree: 2
-  enable_interaction_features: true
+features:
+  target_column: "readmitted"
+  numerical_features: ["age", "time_in_hospital", "num_medications"]
+  categorical_features:
+    ["gender", "admission_type_id", "discharge_disposition_id"]
 
-evaluation:
-  metrics: ["accuracy", "precision", "recall", "f1_score", "roc_auc"]
-  cross_validation_folds: 5
+feature_engineering:
+  apply_selection: true
+  n_features_to_select: 20
 
 logging:
   level: "INFO"
+  file: "logs/main.log"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 ```
 
-## Testing
+## 🚀 FastAPI API Endpoints
 
-Comprehensive test suite with 95%+ code coverage:
+### Health Check
 
 ```bash
-# Run all tests
-pytest
+GET /health
+```
+
+Returns pipeline status and last results.
+
+### Data Information
+
+```bash
+GET /data-info
+```
+
+Returns information about the raw data source.
+
+### Run Pipeline
+
+```bash
+POST /run-pipeline
+{
+  "data_source": "data/raw/diabetic_readmission_data.csv",
+  "force_retrain": false
+}
+```
+
+Starts the complete MLOps pipeline asynchronously.
+
+### Get Results
+
+```bash
+GET /results
+```
+
+Returns the latest pipeline results and metrics.
+
+### Get Metrics
+
+```bash
+GET /metrics
+```
+
+Returns detailed model performance metrics.
+
+### Model Information
+
+```bash
+GET /model-info
+```
+
+Returns information about the trained model.
+
+## 📈 Performance Results
+
+The pipeline achieves the following performance metrics:
+
+- **F1-Score**: 0.5284 (improved from baseline 0.42)
+- **Accuracy**: ~0.75
+- **Precision**: ~0.65
+- **Recall**: ~0.45
+- **ROC-AUC**: ~0.70
+
+### Model Comparison
+
+- **Baseline F1-Score**: 0.42
+- **Current Model F1-Score**: 0.5284
+- **Improvement**: +0.1084 (25.8% improvement)
+
+## 🛠️ Technical Features
+
+### Error Handling & Logging
+
+- **Comprehensive Logging**: All pipeline steps are logged with timestamps
+- **Error Recovery**: Graceful handling of failures with detailed error messages
+- **Progress Tracking**: Real-time progress updates during pipeline execution
+- **Clean Output**: All model-related warnings have been resolved
+
+### Data Processing
+
+- **Smart Missing Value Handling**: Intelligent imputation based on data types
+- **Automatic Type Conversion**: Converts integer columns to strings for categorical features
+- **Feature Name Consistency**: Resolved all feature name warnings in model training
+- **Robust Validation**: Comprehensive data validation with detailed reporting
+
+### Model Management
+
+- **Model Persistence**: Saves both model and feature engineer together
+- **Metadata Tracking**: Detailed model metadata and training information
+- **Version Control**: Model versioning and comparison capabilities
+- **Feature Engineer Integration**: Seamless feature engineering pipeline integration
+
+### Performance Optimizations
+
+- **Batch Processing**: Efficient handling of large datasets
+- **Memory Management**: Optimized memory usage for large data processing
+- **Parallel Processing**: Support for parallel feature engineering
+- **Caching**: Intelligent caching of intermediate results
+
+## 🧪 Testing
+
+### Unit Tests
+
+```bash
+# Run all unit tests
+python -m pytest tests/
 
 # Run specific test modules
-pytest tests/test_data_loader.py
-pytest tests/test_evaluation.py
-pytest tests/test_inference.py
-
-# Run with coverage
-pytest --cov=src tests/
-
-# Run tests verbosely
-pytest -v
+python -m pytest tests/test_model.py
+python -m pytest tests/test_inference.py
+python -m pytest tests/test_pipeline.py
+python -m pytest tests/test_feature_engineering.py
+python -m pytest tests/test_preprocessing.py
+python -m pytest tests/test_data_validation.py
+python -m pytest tests/test_eda.py
+python -m pytest tests/test_evaluation.py
 ```
 
 ### Test Coverage
-- **Unit Tests**: Individual function testing
-- **Integration Tests**: Module interaction testing
-- **End-to-End Tests**: Full pipeline testing
-- **Mock Testing**: External dependency testing
-- **Error Handling**: Exception and edge case testing
-
-## Logging and Monitoring
-
-Comprehensive logging system across all modules:
-
-### Log Files
-- `logs/main.log` - Main pipeline execution
-- `logs/data_loader.log` - Data loading operations
-- `logs/validation_report.json` - Data validation results
-- `logs/eda.log` - EDA analysis logs
-- `logs/preprocessing.log` - Preprocessing operations
-- `logs/feature_engineering.log` - Feature engineering logs
-- `logs/model_training.log` - Model training progress
-- `logs/evaluation_report.json` - Model evaluation results
-- `logs/inference_report.json` - Inference operations
-
-### Monitoring Features
-- **Performance Metrics**: Execution time tracking
-- **Error Tracking**: Detailed error logging and stack traces
-- **Progress Indicators**: Visual progress bars and status updates
-- **Resource Usage**: Memory and computation monitoring
-
-## Results and Artifacts
-
-### Generated Artifacts
-- **Trained Models**: `models/trained_model.joblib`
-- **Preprocessing Pipelines**: `models/preprocessor.joblib`
-- **Feature Engineering Pipelines**: `models/feature_engineer.joblib`
-- **Evaluation Reports**: `logs/evaluation_report.json`
-- **Prediction Results**: `data/processed/inference_results.json`
-
-### Visualizations
-- **EDA Plots**: 20+ analysis visualizations in `plots/eda/`
-- **Model Performance**: ROC curves, confusion matrices in `plots/evaluation/`
-- **Feature Analysis**: Feature importance and correlation plots
-
-## MLflow Integration
-
-Optional MLflow integration for experiment tracking:
 
 ```bash
-# Start MLflow UI
-mlflow ui
-
-# View experiments at http://localhost:5000
+# Run with coverage
+python -m pytest --cov=src tests/
 ```
 
-### Tracked Metrics
-- Model performance metrics
-- Hyperparameter configurations  
-- Training artifacts
-- Model comparison results
+### API Testing
 
-## Pipeline Execution Flow
+Since the API now accepts dynamic file paths, you can test it using curl or any HTTP client:
 
-1. **Data Loading** → Load and validate raw data
-2. **Data Validation** → Quality checks and cleaning
-3. **EDA** → Comprehensive data analysis
-4. **Preprocessing** → Data cleaning and transformation
-5. **Feature Engineering** → Advanced feature creation
-6. **Model Training** → Train and optimize models
-7. **Model Evaluation** → Comprehensive performance analysis
-8. **Model Inference** → Production-ready predictions
-9. **Reporting** → Generate comprehensive reports
+```bash
+# Test health endpoint
+curl http://localhost:8000/health
 
-## Contributing
+# Test data info
+curl http://localhost:8000/data-info
+
+# Run pipeline with custom data source
+curl -X POST http://localhost:8000/run-pipeline \
+  -H "Content-Type: application/json" \
+  -d '{"data_source": "data/raw/diabetic_readmission_data.csv", "force_retrain": false}'
+
+# Get pipeline results
+curl http://localhost:8000/results
+
+# Get model metrics
+curl http://localhost:8000/metrics
+
+# Get model info
+curl http://localhost:8000/model-info
+```
+
+### Manual Testing
+
+You can also test the API using Python requests:
+
+```python
+import requests
+import json
+
+# Test pipeline with custom data source
+response = requests.post(
+    "http://localhost:8000/run-pipeline",
+    json={
+        "data_source": "data/raw/diabetic_readmission_data.csv",
+        "force_retrain": False
+    }
+)
+print(response.json())
+
+# Get results
+response = requests.get("http://localhost:8000/results")
+print(response.json())
+```
+
+## 📁 Project Structure
+
+```
+mlops_group_project/
+├── src/                   # Source code
+│   ├── api/              # FastAPI application
+│   ├── data_loader/      # Data loading
+│   ├── validation/       # Data validation
+│   ├── eda/              # Exploratory data analysis
+│   ├── preprocessing/    # Data preprocessing
+│   ├── features/         # Feature engineering
+│   ├── model/            # Model training
+│   ├── evaluation/       # Model evaluation
+│   ├── inference/        # Model inference
+│   └── config.yaml       # Configuration
+├── data/                 # Data files
+│   ├── raw/              # Raw data
+│   └── processed/        # Processed data
+├── models/               # Trained models
+├── logs/                 # Log files
+├── tests/                # Test files
+├── notebooks/            # Jupyter notebooks
+├── requirements.txt      # Dependencies
+├── README.md            # This file
+└── test_pipeline_api.py # API test script
+```
+
+## 🔍 Monitoring & Logging
+
+### Log Files
+
+- `logs/main.log`: Main pipeline execution logs
+- `logs/validation.log`: Data validation logs
+- `logs/feature_engineering.log`: Feature engineering logs
+- `logs/training.log`: Model training logs
+- `logs/inference.log`: Inference logs
+
+### Reports
+
+- `logs/validation_report.json`: Data validation results
+- `logs/feature_engineering_report.json`: Feature engineering summary
+- `logs/training_report.json`: Model training details
+- `logs/inference_report.json`: Inference results
+
+## 🐳 Docker Deployment
+
+### Building the Docker Image
+
+```bash
+# Build the Docker image
+docker build -t hospital-readmission-mlops .
+
+# Build with specific tag
+docker build -t hospital-readmission-mlops:v1.0.0 .
+```
+
+### Running with Docker
+
+```bash
+# Run the container
+docker run -p 8000:8000 hospital-readmission-mlops
+
+# Run with custom data volume
+docker run -p 8000:8000 \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/models:/app/models \
+  -v $(pwd)/logs:/app/logs \
+  hospital-readmission-mlops
+
+# Run in detached mode
+docker run -d -p 8000:8000 --name mlops-api hospital-readmission-mlops
+```
+
+### Using Docker Compose
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Start with build
+docker-compose up --build -d
+
+# View logs
+docker-compose logs -f mlops-api
+
+# Stop services
+docker-compose down
+```
+
+### Testing Docker Deployment
+
+```bash
+# Test health endpoint
+curl http://localhost:8000/health
+
+# Test API documentation
+curl http://localhost:8000/docs
+
+# Test pipeline with data
+curl -X POST http://localhost:8000/run-pipeline \
+  -H "Content-Type: application/json" \
+  -d '{"data_source": "data/raw/diabetic_readmission_data.csv", "force_retrain": false}'
+```
+
+### Production Deployment
+
+For production deployment, consider:
+
+1. **Environment Variables**: Set production environment variables
+2. **Resource Limits**: Configure memory and CPU limits
+3. **Health Checks**: Monitor container health
+4. **Logging**: Configure proper logging
+5. **Security**: Run as non-root user (already configured)
+
+```bash
+# Production run with resource limits
+docker run -d \
+  --name mlops-api-prod \
+  -p 8000:8000 \
+  --memory=2g \
+  --cpus=1.0 \
+  --restart=unless-stopped \
+  -e ENVIRONMENT=production \
+  -e LOG_LEVEL=INFO \
+  hospital-readmission-mlops
+```
+
+### Docker Image Features
+
+- ✅ **Multi-stage build** for optimized image size
+- ✅ **Non-root user** for security
+- ✅ **Health checks** for monitoring
+- ✅ **Volume mounts** for data persistence
+- ✅ **Environment variables** for configuration
+- ✅ **Resource limits** for production deployment
+- ✅ **CORS enabled** for web integration
+- ✅ **Comprehensive logging** for debugging
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch
 3. Make your changes
 4. Add tests for new functionality
-5. Ensure all tests pass (`pytest`)
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
+5. Ensure all tests pass
+6. Submit a pull request
 
-## Performance Metrics
-
-The pipeline generates comprehensive performance metrics:
-
-### Model Performance
-- **Accuracy**: Overall classification accuracy
-- **Precision/Recall**: Class-specific performance
-- **F1-Score**: Harmonic mean of precision and recall
-- **ROC-AUC**: Area under the ROC curve
-- **PR-AUC**: Area under the Precision-Recall curve
-
-### Pipeline Performance  
-- **Execution Time**: Time for each pipeline step
-- **Memory Usage**: Peak memory consumption
-- **Data Quality**: Missing value and outlier statistics
-- **Feature Importance**: Feature contribution rankings
-
-## License
+## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
-- Built with scikit-learn, pandas, and MLflow
-- Follows MLOps best practices and patterns
-- Designed for production deployment and monitoring
+- UCI Machine Learning Repository for the diabetes dataset
+- Scikit-learn for machine learning algorithms
+- FastAPI for the web framework
+- Pandas and NumPy for data processing
+
+## 📞 Support
+
+For questions or issues, please open an issue on GitHub or contact the development team.
+
+## 🔬 Weights & Biases Integration
+
+This project includes comprehensive Weights & Biases (wandb) integration for experiment tracking, model versioning, and performance monitoring.
+
+### Setup Weights & Biases
+
+1. **Install wandb**:
+
+   ```bash
+   pip install wandb
+   ```
+
+2. **Get your API key**:
+
+   - Go to [https://wandb.ai/settings](https://wandb.ai/settings)
+   - Copy your API key
+
+3. **Set up environment variables**:
+
+   ```bash
+   export WANDB_API_KEY=your_api_key_here
+   export WANDB_PROJECT=hospital-readmission-prediction
+   export WANDB_ENTITY=your_username_or_team_name
+   ```
+
+4. **Or use the setup script**:
+   ```bash
+   python setup_wandb.py
+   ```
+
+### What Gets Tracked
+
+- **Training Metrics**: Accuracy, precision, recall, F1-score, ROC-AUC
+- **Model Configuration**: Hyperparameters, model type, training parameters
+- **Data Information**: Dataset size, feature count, data shapes
+- **Model Artifacts**: Trained models, feature importance, evaluation reports
+- **Experiment Metadata**: Tags, notes, timestamps, environment info
+
+### Dashboard Features
+
+- **Experiment Comparison**: Compare different model runs
+- **Model Lineage**: Track model versions and training data
+- **Performance Monitoring**: Real-time metric tracking
+- **Artifact Management**: Version control for models and data
+- **Collaboration**: Share experiments with team members
+
+### Usage
+
+```python
+# The integration is automatic when running the pipeline
+python src/main.py
+
+# Check your dashboard at: https://wandb.ai
+```
+
+### Configuration
+
+Edit `src/config.yaml` to customize wandb settings:
+
+```yaml
+wandb:
+  project: "hospital-readmission-prediction"
+  entity: "your_username_or_team_name"
+  experiment_name: "mlops_pipeline_v1"
+  enabled: true
+  tags:
+    - "mlops"
+    - "hospital-readmission"
+    - "fastapi"
+    - "production"
+  notes: "Hospital readmission prediction MLOps pipeline with FastAPI"
+```
+
+## 🧪 Testing

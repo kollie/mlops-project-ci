@@ -200,21 +200,36 @@ evaluation:
     - accuracy
     - precision
     - recall
-    - f1_score
+    - f1
     - roc_auc
+    - confusion_matrix
   save_curves: true
   primary_metric: "f1_score"
 
-# Logging
+# Weights & Biases Configuration
+wandb:
+  project: "hospital-readmission-prediction"
+  entity: null  # Set to your username or team name
+  experiment_name: "mlops_pipeline_v1"
+  enabled: true
+  tags:
+    - "mlops"
+    - "hospital-readmission"
+    - "fastapi"
+    - "production"
+  notes: "Hospital readmission prediction MLOps pipeline with FastAPI"
+
+# Model Registry (MLflow)
+model_registry:
+  enabled: false
+  tracking_uri: "mlruns"
+  experiment_name: "diabetes_readmission"
+
+# Logging configuration
 logging:
   level: "INFO"
+  file: "logs/main.log"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-
-# Model registry
-model_registry:
-  type: "mlflow"
-  tracking_uri: "http://localhost:5000"
-  experiment_name: "diabetic_readmission_prediction"
 
 # Output paths
 output:

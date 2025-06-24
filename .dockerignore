@@ -1,0 +1,80 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific - exclude logs and data but keep structure
+logs/*.log
+data/raw/*.csv
+data/processed/
+plots/
+models/*.pkl
+models/*.joblib
+.dvc/
+.dvcignore
+
+# Documentation
+README.md
+*.md
+
+# Tests
+tests/
+pytest.ini
+
+# Notebooks
+notebooks/
+*.ipynb
+
+# Environment files
+.env
+environment.yml
+
+# Docker files (don't copy into container)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Deployment files
+render.yaml
+railway.json 

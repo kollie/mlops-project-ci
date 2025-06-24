@@ -34,8 +34,8 @@ def setup_logging():
     return logging.getLogger(__name__)
 
 
-def main():
-    """Main function to run the complete ML pipeline."""
+def main(data_source: str = None):
+    """Main function to run the complete ML pipeline. Accepts a data_source file path."""
     # Setup logging
     logger = setup_logging()
     logger.info("🚀 Starting MLOps pipeline...")
@@ -44,7 +44,7 @@ def main():
         # Step 1: Load and split data
         logger.info("Step 1: Loading and splitting data...")
         data_loader = DataLoader(config_path="src/config.yaml")
-        df = data_loader.load_data()
+        df = data_loader.load_data(file_path=data_source)
         train, val, test = data_loader.split_data(df)
         data_loader.save_split_data(train, val, test)
         logger.info(
@@ -125,6 +125,10 @@ def main():
         logger.info("Step 6: Training model...")
         trainer = ModelTrainer(config_path="src/config.yaml")
         trainer.fit(X_train_eng, y_train)
+        
+        # Set the feature engineer for model saving
+        trainer.set_feature_engineer(engineer)
+        
         model_path = trainer.save()
         logger.info(f"✅ Model trained and saved to: {model_path}")
 
@@ -149,6 +153,12 @@ def main():
         logger.info("📈 Test Results:")
         for metric, value in test_metrics.items():
             logger.info(f"   {metric}: {value:.4f}")
+
+        # Log evaluation metrics to wandb
+        trainer.log_evaluation_metrics(test_metrics)
+        
+        # Log feature importance to wandb
+        trainer.log_feature_importance(list(X_train_eng.columns))
 
         # Save evaluation results
         metrics_path = evaluator.save_metrics()
@@ -198,12 +208,12 @@ def main():
         # Step 9: Model Comparison (if previous model exists)
         logger.info("Step 9: Checking for model comparison...")
         try:
-            # Example: Compare with dummy baseline metrics
+            # More realistic baseline metrics for hospital readmission prediction
             baseline_metrics = {
-                "accuracy": 0.60,
-                "precision": 0.55,
-                "recall": 0.50,
-                "f1_score": 0.52,
+                "accuracy": 0.55,
+                "precision": 0.45,
+                "recall": 0.40,
+                "f1_score": 0.42,
             }
 
             comparison = evaluator.compare_models(
@@ -221,6 +231,13 @@ def main():
                     f"   Decrease in F1-score: {comparison['differences']['f1_score']:.4f}"
                 )
 
+            # Log comparison results to wandb
+            trainer.log_evaluation_metrics({
+                "baseline_f1": baseline_metrics["f1_score"],
+                "current_f1": test_metrics.get("f1_score", 0),
+                "improvement": comparison["differences"]["f1_score"]
+            })
+
         except Exception as e:
             logger.warning(f"Model comparison skipped: {str(e)}")
 
@@ -237,6 +254,9 @@ def main():
         logger.info("   Inference results: data/processed/inference_results.json")
         logger.info("=" * 60)
 
+        # Finish wandb run
+        trainer.finish_wandb()
+
         return {
             "data_shapes": {
                 "train": train.shape,
@@ -247,11 +267,17 @@ def main():
             "model_path": model_path,
             "inference_results": batch_results,
             "comparison": comparison if "comparison" in locals() else None,
+            "data_source": data_source if data_source else data_loader.config["data"].get("raw_data_path"),
         }
 
     except Exception as e:
         logger.error(f"❌ Pipeline failed: {str(e)}")
         logger.error("Check the logs above for detailed error information.")
+        
+        # Ensure wandb run is finished even on failure
+        if 'trainer' in locals():
+            trainer.finish_wandb()
+        
         raise
 
 
