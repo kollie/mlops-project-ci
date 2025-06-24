@@ -56,6 +56,7 @@ class ModelTrainer:
         # Weights & Biases
         self.wandb_run = None
         self._setup_wandb()
+        self.model = self._create_model()
 
     def _load_config(self, config_path: str) -> dict:
         """Load configuration from YAML file."""

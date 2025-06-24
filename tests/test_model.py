@@ -110,9 +110,9 @@ class TestModelTrainer:
     def test_model_trainer_initialization(self, sample_config):
         """Test ModelTrainer initialization."""
         trainer = ModelTrainer(sample_config)
-        assert trainer.model is None
-        assert trainer.model_type == ""
-        assert trainer.model_params == {}
+        assert trainer.model is not None
+        assert trainer.model_type == "random_forest"
+        assert isinstance(trainer.model_params, dict)
         assert trainer._is_fitted is False
         assert trainer.config is not None
         assert trainer.logger is not None
@@ -171,9 +171,8 @@ class TestModelTrainer:
         with open(sample_config, "w") as f:
             yaml.dump(config, f)
 
-        trainer = ModelTrainer(sample_config)
         with pytest.raises(ValueError, match="Unsupported model type"):
-            trainer._create_model()
+            ModelTrainer(sample_config)
 
     # ---------- Training Tests ----------
 
