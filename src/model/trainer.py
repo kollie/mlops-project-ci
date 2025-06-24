@@ -116,7 +116,7 @@ class ModelTrainer:
                 mlflow.set_tracking_uri(tracking_uri)
                 mlflow.set_experiment(experiment_name)
 
-                self.logger.info(f"✅ MLflow tracking setup: {tracking_uri}")
+                self.logger.info(f"MLflow tracking setup: {tracking_uri}")
                 return True
             else:
                 self.logger.info("MLflow tracking disabled in config")
@@ -177,7 +177,7 @@ class ModelTrainer:
             else:
                 raise ValueError(f"Unsupported model type: {self.model_type}")
 
-            self.logger.info(f"✅ Model {self.model_type} created successfully")
+            self.logger.info(f"Model {self.model_type} created successfully")
             return model
 
         except Exception as e:
@@ -187,7 +187,7 @@ class ModelTrainer:
     def fit(self, X_train: pd.DataFrame, y_train: pd.Series) -> None:
         """Fit the model on training data."""
         try:
-            self.logger.info("🔧 Starting model training...")
+            self.logger.info(" Starting model training...")
 
             if X_train.empty:
                 raise ValueError("Cannot train on empty training data")
@@ -265,7 +265,8 @@ class ModelTrainer:
 
             self._write_report()
 
-            self.logger.info("✅ Model training completed successfully!")
+            # Log results
+            self.logger.info("Model training completed successfully!")
             self.logger.info(
                 f"Model trained on {len(X_train)} samples with {X_train.shape[1]} features"
             )
@@ -406,10 +407,9 @@ class ModelTrainer:
                     "model/save_timestamp": pd.Timestamp.now()
                 })
 
-            self.logger.info(f"✅ Model and feature engineer saved to: {model_path}")
+            self.logger.info(f"  Model and feature engineer saved to: {model_path}")
             self.logger.info(f"  Model type: {self.model_type}")
             self.logger.info(f"  Feature engineer: {'Available' if self.feature_engineer else 'Not available'}")
-
             return model_path
 
         except Exception as e:
@@ -441,7 +441,7 @@ class ModelTrainer:
                 self.model_type = metadata.get("model_type", "unknown")
                 self.model_params = metadata.get("model_parameters", {})
 
-            self.logger.info(f"✅ Model loaded from: {model_path}")
+            self.logger.info(f"Model loaded from: {model_path}")
 
         except Exception as e:
             self.logger.error(f"Error loading model: {str(e)}")
