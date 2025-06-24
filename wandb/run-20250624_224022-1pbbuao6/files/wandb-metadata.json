@@ -1,0 +1,49 @@
+{
+    "os": "macOS-15.3.1-arm64-arm-64bit",
+    "python": "3.10.18",
+    "heartbeatAt": "2025-06-24T20:40:23.168892",
+    "startedAt": "2025-06-24T20:40:22.436925",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/Users/cameronbell/Projects/mlops-project-ci/setup_wandb.py",
+    "codePathLocal": "setup_wandb.py",
+    "codePath": "setup_wandb.py",
+    "git": {
+        "remote": "https://github.com/kollie/mlops-project-ci.git",
+        "commit": "115500853c064601d92aac44de53fb6fd9b1d7da"
+    },
+    "email": "cameronsobell@gmail.com",
+    "root": "/Users/cameronbell/Projects/mlops-project-ci",
+    "host": "Camerons-MacBook-Air.local",
+    "username": "cameronbell",
+    "executable": "/opt/miniconda3/envs/mlops/bin/python",
+    "cpu_count": 8,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 3204,
+        "min": 600,
+        "max": 3204
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3204,
+            "min": 600,
+            "max": 3204
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 228.27386474609375,
+            "used": 14.773796081542969
+        }
+    },
+    "gpuapple": {
+        "type": "arm",
+        "vendor": "Apple"
+    },
+    "memory": {
+        "total": 8.0
+    }
+}

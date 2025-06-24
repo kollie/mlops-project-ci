@@ -174,4 +174,4 @@ if __name__ == "__main__":
     print("\n📖 For more information:")
     print("   - Weights & Biases docs: https://docs.wandb.ai")
     print("   - Project README: README.md")
-    print("   - Configuration: src/config.yaml") 
+    print("   - Configuration: src/config.yaml")
