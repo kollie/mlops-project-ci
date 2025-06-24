@@ -1,0 +1,13 @@
+name: feature_engineering_env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - pandas
+      - numpy
+      - pyyaml
+      - scikit-learn
+      - mlflow

@@ -1,0 +1,11 @@
+name: model_training
+
+conda_env: conda.yml
+
+entry_points:
+  main:
+    parameters:
+      config_path: {type: str, default: "src/config.yaml"}
+      run_name: {type: str, default: "model_training_run"}
+    command: >
+      python run.py --config_path {config_path} --run_name {run_name}
