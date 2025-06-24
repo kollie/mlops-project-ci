@@ -1,3 +1,5 @@
+![CI](https://github.com/kollie/mlops-project-ci/actions/workflows/ci.yml/badge.svg)
+
 # MLOps Hospital Readmission Prediction Project
 
 A comprehensive machine learning pipeline for predicting hospital readmission rates using patient data. This project implements a complete MLOps workflow with automated data processing, model training, evaluation, and inference capabilities.

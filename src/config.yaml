@@ -1,3 +1,15 @@
+main:
+  steps:
+    - load_data
+    - validate_data
+    - eda
+    - preprocess
+    - feature_engineering
+    - train
+    - evaluate
+    - inference
+    - compare
+
 data:
   raw_data_path: "data/raw/diabetic_readmission_data.csv"
   raw_data_format: "csv"

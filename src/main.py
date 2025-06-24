@@ -3,6 +3,7 @@ import sys
 import os
 import pandas as pd
 from pathlib import Path
+import yaml
 
 # Add project root to path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -34,212 +35,272 @@ def setup_logging():
     return logging.getLogger(__name__)
 
 
+def run_load_data(config, data_source=None):
+    data_loader = DataLoader(config_path="src/config.yaml")
+    df = data_loader.load_data(file_path=data_source)
+    train, val, test = data_loader.split_data(df)
+    data_loader.save_split_data(train, val, test)
+    return df, train, val, test
+
+
+def run_validate_data(config, df):
+    validator = DataValidator(config_path="src/config.yaml")
+    clean_data = validator.validate_and_clean(df, strategy="drop_columns")
+    return clean_data
+
+
+def run_eda(config, clean_data):
+    eda_analyzer = EDAAnalyzer(config_path="src/config.yaml")
+    eda_report = eda_analyzer.run_full_analysis(clean_data)
+    return eda_report
+
+
+def run_preprocessing(config, train, val, test):
+    preprocessor = Preprocessor(config_path="src/config.yaml")
+    X_train, y_train = preprocessor.fit_transform(train)
+    X_val, y_val = preprocessor.transform(val)
+    X_test, y_test = preprocessor.transform(test)
+    preprocessor.save_pipeline("models/preprocessor.joblib")
+    return X_train, y_train, X_val, y_val, X_test, y_test
+
+
+def run_feature_engineering(
+    config, X_train, y_train, X_val, y_val, X_test, y_test
+):
+    engineer = FeatureEngineer(config_path="src/config.yaml")
+    X_train_eng, y_train = engineer.fit_transform(
+        pd.concat([X_train, y_train], axis=1), target_col="readmitted"
+    )
+    X_val_eng, y_val = engineer.transform(
+        pd.concat([X_val, y_val], axis=1), target_col="readmitted"
+    )
+    X_test_eng, y_test = engineer.transform(
+        pd.concat([X_test, y_test], axis=1), target_col="readmitted"
+    )
+    return engineer, X_train_eng, y_train, X_val_eng, y_val, X_test_eng, y_test
+
+
+def run_train(config, X_train_eng, y_train, engineer):
+    trainer = ModelTrainer(config_path="src/config.yaml")
+    trainer.fit(X_train_eng, y_train)
+    trainer.set_feature_engineer(engineer)
+    model_path = trainer.save()
+    return trainer, model_path
+
+
+def run_evaluate(config, trainer, X_test_eng, y_test):
+    evaluator = ModelEvaluator(config_path="src/config.yaml")
+    predictions = trainer.predict(X_test_eng)
+    probabilities = trainer.predict_proba(X_test_eng)
+    evaluation_results = evaluator.evaluate(
+        y_true=y_test,
+        y_pred=predictions,
+        y_pred_proba=probabilities,
+        dataset_name="test",
+    )
+    test_metrics = evaluator.get_metrics()
+    trainer.log_evaluation_metrics(test_metrics)
+    trainer.log_feature_importance(list(X_test_eng.columns))
+    metrics_path = evaluator.save_metrics()
+    return evaluator, test_metrics, metrics_path
+
+
+def run_inference(config, model_path, X_test_eng):
+    predictor = ModelPredictor(config_path="src/config.yaml")
+    predictor.load_model(model_path)
+    test_sample = X_test_eng.head(10).reset_index(drop=True)
+    inference_predictions = predictor.predict(test_sample, preprocess=False)
+    confidence_results = predictor.predict_with_confidence(
+        test_sample, confidence_threshold=0.8, preprocess=False
+    )
+    batch_results = predictor.predict_batch(
+        X_test_eng.reset_index(drop=True),
+        batch_size=100,
+        save_path="data/processed/inference_results.json",
+    )
+    return predictor, inference_predictions, confidence_results, batch_results
+
+
+def run_compare(config, evaluator, trainer, test_metrics):
+    baseline_metrics = {
+        "accuracy": 0.55,
+        "precision": 0.45,
+        "recall": 0.40,
+        "f1_score": 0.42,
+    }
+    try:
+        comparison = evaluator.compare_models(
+            baseline_metrics, primary_metric="f1_score"
+        )
+        trainer.log_evaluation_metrics({
+            "baseline_f1": baseline_metrics["f1_score"],
+            "current_f1": test_metrics.get("f1_score", 0),
+            "improvement": comparison["differences"]["f1_score"]
+        })
+    except Exception as e:
+        comparison = None
+    return comparison
+
+
+STEP_FUNCTIONS = {
+    "load_data": run_load_data,
+    "validate_data": run_validate_data,
+    "eda": run_eda,
+    "preprocess": run_preprocessing,
+    "feature_engineering": run_feature_engineering,
+    "train": run_train,
+    "evaluate": run_evaluate,
+    "inference": run_inference,
+    "compare": run_compare,
+}
+
+
 def main(data_source: str = None):
     """Main function to run the complete ML pipeline. Accepts a data_source file path."""
     # Setup logging
     logger = setup_logging()
     logger.info("🚀 Starting MLOps pipeline...")
 
+    # Load steps from config.yaml
+    with open("src/config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+    steps_to_run = config.get("main", {}).get("steps", [])
+
     try:
         # Step 1: Load and split data
-        logger.info("Step 1: Loading and splitting data...")
-        data_loader = DataLoader(config_path="src/config.yaml")
-        df = data_loader.load_data(file_path=data_source)
-        train, val, test = data_loader.split_data(df)
-        data_loader.save_split_data(train, val, test)
-        logger.info(
-            f"✅ Data loaded and split - Train: {train.shape}, Val: {val.shape}, Test: {test.shape}"
-        )
+        if "load_data" in steps_to_run:
+            logger.info("Step 1: Loading and splitting data...")
+            df, train, val, test = run_load_data(config, data_source)
+            logger.info(
+                f"✅ Data loaded and split - Train: {train.shape}, Val: {val.shape}, Test: {test.shape}"
+            )
+        else:
+            df = train = val = test = None
 
         # Step 2: Validate and clean data
-        logger.info("Step 2: Validating and cleaning data...")
-        validator = DataValidator(config_path="src/config.yaml")
-        clean_data = validator.validate_and_clean(df, strategy="drop_columns")
-        logger.info(
-            f"✅ Data validation completed - Clean data shape: {clean_data.shape}"
-        )
+        if "validate_data" in steps_to_run:
+            logger.info("Step 2: Validating and cleaning data...")
+            clean_data = run_validate_data(config, df)
+            logger.info(
+                f"✅ Data validation completed - Clean data shape: {clean_data.shape}"
+            )
+        else:
+            clean_data = df
 
         # Step 3: Exploratory Data Analysis
-        logger.info("Step 3: Performing Exploratory Data Analysis...")
-        eda_analyzer = EDAAnalyzer(config_path="src/config.yaml")
-        eda_report = eda_analyzer.run_full_analysis(clean_data)
-        logger.info(f"✅ EDA completed - Report sections: {list(eda_report.keys())}")
+        if "eda" in steps_to_run:
+            logger.info("Step 3: Performing Exploratory Data Analysis...")
+            eda_report = run_eda(config, clean_data)
+            logger.info(f"✅ EDA completed - Report sections: {list(eda_report.keys())}")
 
-        # Log key EDA insights
-        if "summary" in eda_report:
-            summary = eda_report["summary"]
-            logger.info("📊 EDA Summary:")
-            logger.info(f"   Total features: {summary.get('total_features', 'N/A')}")
-            logger.info(
-                f"   Numeric features: {summary.get('numeric_features', 'N/A')}"
-            )
-            logger.info(
-                f"   Categorical features: {summary.get('categorical_features', 'N/A')}"
-            )
-            logger.info(
-                f"   Missing data: {summary.get('missing_data_percentage', 'N/A')}%"
-            )
+            # Log key EDA insights
+            if "summary" in eda_report:
+                summary = eda_report["summary"]
+                logger.info("📊 EDA Summary:")
+                logger.info(f"   Total features: {summary.get('total_features', 'N/A')}")
+                logger.info(
+                    f"   Numeric features: {summary.get('numeric_features', 'N/A')}"
+                )
+                logger.info(
+                    f"   Categorical features: {summary.get('categorical_features', 'N/A')}"
+                )
+                logger.info(
+                    f"   Missing data: {summary.get('missing_data_percentage', 'N/A')}%"
+                )
 
-        if (
-            "target_analysis" in eda_report
-            and "error" not in eda_report["target_analysis"]
-        ):
-            target_analysis = eda_report["target_analysis"]
-            logger.info("🎯 Target Analysis:")
-            logger.info(
-                f"   Target column: {target_analysis.get('target_column', 'N/A')}"
-            )
-            logger.info(
-                f"   Class distribution: {target_analysis.get('percentages', {})}"
-            )
-            logger.info(
-                f"   Balanced: {target_analysis.get('class_balance', {}).get('is_balanced', 'N/A')}"
-            )
+            if (
+                "target_analysis" in eda_report
+                and "error" not in eda_report["target_analysis"]
+            ):
+                target_analysis = eda_report["target_analysis"]
+                logger.info("🎯 Target Analysis:")
+                logger.info(
+                    f"   Target column: {target_analysis.get('target_column', 'N/A')}"
+                )
+                logger.info(
+                    f"   Class distribution: {target_analysis.get('percentages', {})}"
+                )
+                logger.info(
+                    f"   Balanced: {target_analysis.get('class_balance', {}).get('is_balanced', 'N/A')}"
+                )
 
         # Step 4: Preprocessing
-        logger.info("Step 4: Preprocessing data...")
-        preprocessor = Preprocessor(config_path="src/config.yaml")
-        X_train, y_train = preprocessor.fit_transform(train)
-        X_val, y_val = preprocessor.transform(val)
-        X_test, y_test = preprocessor.transform(test)
-        preprocessor.save_pipeline("models/preprocessor.joblib")
-        logger.info(f"✅ Data preprocessed - Training shape: {X_train.shape}")
+        if "preprocess" in steps_to_run:
+            logger.info("Step 4: Preprocessing data...")
+            X_train, y_train, X_val, y_val, X_test, y_test = run_preprocessing(config, train, val, test)
+            logger.info(f"✅ Data preprocessed - Training shape: {X_train.shape}")
+        else:
+            X_train = y_train = X_val = y_val = X_test = y_test = None
 
         # Step 5: Feature Engineering
-        logger.info("Step 5: Applying feature engineering...")
-        engineer = FeatureEngineer(config_path="src/config.yaml")
-        X_train_eng, y_train = engineer.fit_transform(
-            pd.concat([X_train, y_train], axis=1), target_col="readmitted"
-        )
-        X_val_eng, y_val = engineer.transform(
-            pd.concat([X_val, y_val], axis=1), target_col="readmitted"
-        )
-        X_test_eng, y_test = engineer.transform(
-            pd.concat([X_test, y_test], axis=1), target_col="readmitted"
-        )
-        logger.info(
-            f"✅ Feature engineering completed - Final shape: {X_train_eng.shape}"
-        )
+        if "feature_engineering" in steps_to_run:
+            logger.info("Step 5: Applying feature engineering...")
+            engineer, X_train_eng, y_train, X_val_eng, y_val, X_test_eng, y_test = run_feature_engineering(config, X_train, y_train, X_val, y_val, X_test, y_test)
+            logger.info(
+                f"✅ Feature engineering completed - Final shape: {X_train_eng.shape}"
+            )
+        else:
+            X_train_eng = X_val_eng = X_test_eng = None
 
         # Step 6: Train Model
-        logger.info("Step 6: Training model...")
-        trainer = ModelTrainer(config_path="src/config.yaml")
-        trainer.fit(X_train_eng, y_train)
-        
-        # Set the feature engineer for model saving
-        trainer.set_feature_engineer(engineer)
-        
-        model_path = trainer.save()
-        logger.info(f"✅ Model trained and saved to: {model_path}")
+        if "train" in steps_to_run:
+            logger.info("Step 6: Training model...")
+            trainer, model_path = run_train(config, X_train_eng, y_train, engineer)
+            logger.info(f"✅ Model trained and saved to: {model_path}")
+        else:
+            trainer = model_path = None
 
         # Step 7: Evaluate Model
-        logger.info("Step 7: Evaluating model...")
-        evaluator = ModelEvaluator(config_path="src/config.yaml")
-
-        # Get predictions and probabilities for evaluation
-        predictions = trainer.predict(X_test_eng)
-        probabilities = trainer.predict_proba(X_test_eng)
-
-        # Run evaluation
-        evaluation_results = evaluator.evaluate(
-            y_true=y_test,
-            y_pred=predictions,
-            y_pred_proba=probabilities,
-            dataset_name="test",
-        )
-
-        # Log key metrics
-        test_metrics = evaluator.get_metrics()
-        logger.info("📈 Test Results:")
-        for metric, value in test_metrics.items():
-            logger.info(f"   {metric}: {value:.4f}")
-
-        # Log evaluation metrics to wandb
-        trainer.log_evaluation_metrics(test_metrics)
-        
-        # Log feature importance to wandb
-        trainer.log_feature_importance(list(X_train_eng.columns))
-
-        # Save evaluation results
-        metrics_path = evaluator.save_metrics()
-        logger.info(f"✅ Evaluation completed - Metrics saved to: {metrics_path}")
+        if "evaluate" in steps_to_run:
+            logger.info("Step 7: Evaluating model...")
+            evaluator, test_metrics, metrics_path = run_evaluate(config, trainer, X_test_eng, y_test)
+            logger.info("📈 Test Results:")
+            for metric, value in test_metrics.items():
+                logger.info(f"   {metric}: {value:.4f}")
+            logger.info(f"✅ Evaluation completed - Metrics saved to: {metrics_path}")
+        else:
+            evaluator = test_metrics = metrics_path = None
 
         # Step 8: Test Inference
-        logger.info("Step 8: Testing model inference...")
-        predictor = ModelPredictor(config_path="src/config.yaml")
-        predictor.load_model(model_path)
-
-        # Test inference on a sample of test data
-        test_sample = X_test_eng.head(10).reset_index(drop=True)
-
-        # Make basic predictions
-        inference_predictions = predictor.predict(test_sample, preprocess=False)
-        logger.info(
-            f"✅ Basic inference completed - {len(inference_predictions)} predictions made"
-        )
-
-        # Test confidence predictions
-        confidence_results = predictor.predict_with_confidence(
-            test_sample, confidence_threshold=0.8, preprocess=False
-        )
-        logger.info("📊 Confidence Analysis:")
-        logger.info(
-            f"   High confidence predictions: {confidence_results['high_confidence_count']}/{len(test_sample)}"
-        )
-        logger.info(
-            f"   Mean confidence: {confidence_results['confidence_stats']['mean_confidence']:.4f}"
-        )
-
-        # Test batch inference on full test set
-        logger.info("Testing batch inference on full test set...")
-        batch_results = predictor.predict_batch(
-            X_test_eng.reset_index(drop=True),
-            batch_size=100,
-            save_path="data/processed/inference_results.json",
-        )
-        logger.info(
-            f"✅ Batch inference completed - {batch_results['total_samples']} samples processed in {batch_results['n_batches']} batches"
-        )
-
-        # Log prediction distribution
-        pred_dist = batch_results["prediction_distribution"]
-        logger.info(f"   Prediction distribution: {pred_dist}")
+        if "inference" in steps_to_run:
+            logger.info("Step 8: Testing model inference...")
+            predictor, inference_predictions, confidence_results, batch_results = run_inference(config, model_path, X_test_eng)
+            logger.info(
+                f"✅ Basic inference completed - {len(inference_predictions)} predictions made"
+            )
+            logger.info("📊 Confidence Analysis:")
+            logger.info(
+                f"   High confidence predictions: {confidence_results['high_confidence_count']}/{len(inference_predictions)}"
+            )
+            logger.info(
+                f"   Mean confidence: {confidence_results['confidence_stats']['mean_confidence']:.4f}"
+            )
+            logger.info("Testing batch inference on full test set...")
+            logger.info(
+                f"✅ Batch inference completed - {batch_results['total_samples']} samples processed in {batch_results['n_batches']} batches"
+            )
+            pred_dist = batch_results["prediction_distribution"]
+            logger.info(f"   Prediction distribution: {pred_dist}")
+        else:
+            predictor = batch_results = None
 
         # Step 9: Model Comparison (if previous model exists)
-        logger.info("Step 9: Checking for model comparison...")
-        try:
-            # More realistic baseline metrics for hospital readmission prediction
-            baseline_metrics = {
-                "accuracy": 0.55,
-                "precision": 0.45,
-                "recall": 0.40,
-                "f1_score": 0.42,
-            }
-
-            comparison = evaluator.compare_models(
-                baseline_metrics, primary_metric="f1_score"
-            )
-
-            if comparison["is_better"]:
-                logger.info("🎉 Current model performs better than baseline!")
-                logger.info(
-                    f"   Improvement in F1-score: {comparison['differences']['f1_score']:.4f}"
-                )
-            else:
-                logger.info("⚠️  Current model performs worse than baseline.")
-                logger.info(
-                    f"   Decrease in F1-score: {comparison['differences']['f1_score']:.4f}"
-                )
-
-            # Log comparison results to wandb
-            trainer.log_evaluation_metrics({
-                "baseline_f1": baseline_metrics["f1_score"],
-                "current_f1": test_metrics.get("f1_score", 0),
-                "improvement": comparison["differences"]["f1_score"]
-            })
-
-        except Exception as e:
-            logger.warning(f"Model comparison skipped: {str(e)}")
+        if "compare" in steps_to_run:
+            logger.info("Step 9: Checking for model comparison...")
+            try:
+                comparison = run_compare(config, evaluator, trainer, test_metrics)
+                if comparison["is_better"]:
+                    logger.info("🎉 Current model performs better than baseline!")
+                    logger.info(
+                        f"   Improvement in F1-score: {comparison['differences']['f1_score']:.4f}"
+                    )
+                else:
+                    logger.info("⚠️  Current model performs worse than baseline.")
+                    logger.info(
+                        f"   Decrease in F1-score: {comparison['differences']['f1_score']:.4f}"
+                    )
+            except Exception as e:
+                logger.warning(f"Model comparison skipped: {str(e)}")
 
         # Pipeline completion summary
         logger.info("🎊 MLOps pipeline completed successfully!")
@@ -267,7 +328,7 @@ def main(data_source: str = None):
             "model_path": model_path,
             "inference_results": batch_results,
             "comparison": comparison if "comparison" in locals() else None,
-            "data_source": data_source if data_source else data_loader.config["data"].get("raw_data_path"),
+            "data_source": data_source if data_source else config["data"].get("raw_data_path"),
         }
 
     except Exception as e:
