@@ -1,0 +1,8 @@
+name: mlops_project
+conda_env: environment.yml
+entry_points:
+  main:
+    parameters:
+      steps: { type: str, default: all }
+    command: >
+      python src/main.py main.steps=${steps}
