@@ -270,16 +270,16 @@ class DataValidator:
         self._write_report()
 
         if all_passed:
-            self.logger.info("✅ All data validations passed successfully!")
+            self.logger.info("All data validations passed successfully!")
         else:
             failed = [k for k, v in results.items() if not v]
-            self.logger.error(f"❌ Validation failed for: {failed}")
+            self.logger.error(f"Validation failed for: {failed}")
 
         return results
 
     def validate_and_clean(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
         """Validate data and apply cleaning operations."""
-        self.logger.info("🧹 Starting data validation and cleaning...")
+        self.logger.info("Starting data validation and cleaning...")
 
         # Initialize report
         self.report = {
@@ -329,9 +329,9 @@ class DataValidator:
             cols_change = self.report["initial_columns"] - self.report["final_columns"]
 
             self.logger.info("=" * 50)
-            self.logger.info("✅ DATA VALIDATION AND CLEANING COMPLETED")
+            self.logger.info("DATA VALIDATION AND CLEANING COMPLETED")
             self.logger.info("=" * 50)
-            self.logger.info("📊 Data summary:")
+            self.logger.info("Data summary:")
             self.logger.info(
                 f"   Rows: {self.report['initial_rows']} → {self.report['final_rows']} ({-rows_change:+d})"
             )
@@ -352,7 +352,7 @@ class DataValidator:
             return data_cleaned
 
         except Exception as e:
-            self.logger.error(f"❌ Validation and cleaning failed: {str(e)}")
+            self.logger.error(f"Validation and cleaning failed: {str(e)}")
             self.report["cleaning_failed"] = True
             self.report["error"] = str(e)
             self._write_report()
@@ -392,13 +392,13 @@ class DataValidator:
 
             if rows_dropped > 0:
                 self.logger.info(
-                    f"✂️  Dropped {rows_dropped} rows with missing values (strategy: {strategy})"
+                    f"Dropped {rows_dropped} rows with missing values (strategy: {strategy})"
                 )
                 self.logger.info(
                     f"   Rows: {rows_before} → {len(data_cleaned)} ({rows_dropped} removed)"
                 )
             else:
-                self.logger.info("✅ No rows dropped - no missing values found")
+                self.logger.info("No rows dropped - no missing values found")
 
         elif strategy == "drop_columns":
             # Drop columns with high missing value ratio
@@ -408,8 +408,8 @@ class DataValidator:
             ].index
 
             if len(high_missing_cols) > 0:
-                self.logger.info(
-                    f"🗑️  Dropping {len(high_missing_cols)} columns with >{threshold*100}% missing values:"
+                self.logger.warning(
+                    f"Dropping {len(high_missing_cols)} columns with >{threshold*100}% missing values:"
                 )
                 for col in high_missing_cols:
                     missing_count = missing_summary[col]
@@ -434,14 +434,14 @@ class DataValidator:
                 }
             else:
                 self.logger.info(
-                    f"✅ No columns dropped - no columns exceed {threshold*100}% missing threshold"
+                    f"No columns dropped - no columns exceed {threshold*100}% missing threshold"
                 )
                 data_cleaned = data.copy()
 
         else:
             # For now, default to dropping rows
             self.logger.warning(
-                f"⚠️  Unknown missing value strategy '{strategy}'. Using 'drop' as fallback."
+                f"Unknown missing value strategy '{strategy}'. Using 'drop' as fallback."
             )
 
             rows_with_missing = data.isnull().any(axis=1).sum()
@@ -460,7 +460,7 @@ class DataValidator:
 
             if rows_dropped > 0:
                 self.logger.info(
-                    f"✂️  Dropped {rows_dropped} rows with missing values (fallback strategy)"
+                    f"Dropped {rows_dropped} rows with missing values (fallback strategy)"
                 )
 
         self.report["missing_value_strategy"] = strategy

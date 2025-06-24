@@ -1,0 +1,26 @@
+# name: data_loader
+
+# conda_env: conda.yml
+
+# entry_points:
+#   main:
+#     parameters:
+#       config_path: {type: str, default: "src/config.yaml", description: "Path to YAML config file"}
+#       run_name: {type: str, default: "default_data_load_run", description: "Name of MLflow run"}
+#     command: >
+#       python run.py --config_path {config_path} --run_name {run_name}
+
+
+name: data_loader
+
+conda_env: conda.yml
+
+entry_points:
+  main:
+    parameters:
+      config_path: {type: str}
+      run_name: {type: str}
+    command: >
+      python run.py --config_path ${config_path} --run_name ${run_name}
+
+

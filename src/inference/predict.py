@@ -91,7 +91,7 @@ class ModelPredictor:
     def load_model(self, model_path: str) -> None:
         """Load the trained model and associated components."""
         try:
-            self.logger.info(f"🔄 Loading model from: {model_path}")
+            self.logger.info(f"Loading model from: {model_path}")
 
             # Validate model file exists
             model_file = Path(model_path)
@@ -126,7 +126,7 @@ class ModelPredictor:
 
             # Log model information
             model_type = type(self.model).__name__
-            self.logger.info("✅ Model loaded successfully:")
+            self.logger.info("Model loaded successfully:")
             self.logger.info(f"  Model type: {model_type}")
             self.logger.info(
                 f"  Feature engineer: {'Available' if self.feature_engineer else 'Not available'}"
@@ -144,7 +144,7 @@ class ModelPredictor:
             }
 
         except Exception as e:
-            self.logger.error(f"❌ Error loading model: {str(e)}")
+            self.logger.error(f"Error making predictions: {str(e)}")
             self.report = {
                 "timestamp": pd.Timestamp.now().isoformat(),
                 "model_path": str(model_path),
@@ -214,9 +214,7 @@ class ModelPredictor:
                 data_with_target, target_col=target_col
             )
 
-            self.logger.info(
-                f"✅ Data preprocessed successfully. Shape: {X_processed.shape}"
-            )
+            self.logger.info(f"Data preprocessed successfully. Shape: {X_processed.shape}")
             return X_processed
 
         except Exception as e:
@@ -229,7 +227,7 @@ class ModelPredictor:
             if self.model is None:
                 raise ValueError("No model loaded. Use load_model() first.")
 
-            self.logger.info(f"🔮 Making predictions on {len(data)} samples...")
+            self.logger.info(f"Making predictions on {len(data)} samples...")
 
             # Validate input data
             self._validate_input_data(data)
@@ -249,7 +247,7 @@ class ModelPredictor:
             # Make predictions
             predictions = self.model.predict(X_array)
 
-            self.logger.info("✅ Predictions completed successfully")
+            self.logger.info("Predictions completed successfully")
             self.logger.info(
                 f"Prediction distribution: {dict(zip(*np.unique(predictions, return_counts=True)))}"
             )
@@ -268,7 +266,7 @@ class ModelPredictor:
             return predictions
 
         except Exception as e:
-            self.logger.error(f"❌ Error making predictions: {str(e)}")
+            self.logger.error(f"Error making predictions: {str(e)}")
             raise
 
     def predict_proba(self, data: pd.DataFrame, preprocess: bool = True) -> np.ndarray:
@@ -282,9 +280,7 @@ class ModelPredictor:
                     f"Model {type(self.model).__name__} does not support probability predictions"
                 )
 
-            self.logger.info(
-                f"🔮 Calculating prediction probabilities on {len(data)} samples..."
-            )
+            self.logger.info(f"Calculating prediction probabilities on {len(data)} samples...")
 
             # Validate input data
             self._validate_input_data(data)
@@ -304,13 +300,13 @@ class ModelPredictor:
             # Get probabilities
             probabilities = self.model.predict_proba(X_array)
 
-            self.logger.info("✅ Prediction probabilities calculated successfully")
+            self.logger.info("Prediction probabilities calculated successfully")
 
             return probabilities
 
         except Exception as e:
             self.logger.error(
-                f"❌ Error calculating prediction probabilities: {str(e)}"
+                f" Error calculating prediction probabilities: {str(e)}"
             )
             raise
 
@@ -322,7 +318,7 @@ class ModelPredictor:
     ) -> Dict[str, Any]:
         """Make predictions with confidence scores and filtering."""
         try:
-            self.logger.info("🔮 Making predictions with confidence analysis...")
+            self.logger.info("Making predictions with confidence analysis...")
 
             # Get predictions and probabilities
             predictions = self.predict(data, preprocess=preprocess)
@@ -375,7 +371,7 @@ class ModelPredictor:
                     "confidence_stats": None,
                 }
 
-            self.logger.info("✅ Confidence analysis completed:")
+            self.logger.info("Confidence analysis completed:")
             self.logger.info(
                 f"  High confidence predictions: {results['high_confidence_count']}/{len(predictions)}"
             )
@@ -386,7 +382,7 @@ class ModelPredictor:
             return results
 
         except Exception as e:
-            self.logger.error(f"❌ Error in confidence prediction: {str(e)}")
+            self.logger.error(f" Error in confidence prediction: {str(e)}")
             raise
 
     def predict_batch(
@@ -460,11 +456,11 @@ class ModelPredictor:
             if save_path:
                 self.save_predictions(results, save_path)
 
-            self.logger.info("✅ Batch processing completed successfully")
+            self.logger.info("Batch processing completed successfully")
             return results
 
         except Exception as e:
-            self.logger.error(f"❌ Error in batch prediction: {str(e)}")
+            self.logger.error(f" Error in batch prediction: {str(e)}")
             raise
 
     def save_predictions(self, results: Dict[str, Any], save_path: str) -> str:
@@ -525,7 +521,7 @@ class ModelPredictor:
             with open(save_path, "w") as f:
                 json.dump(save_data, f, indent=2, default=str)
 
-            self.logger.info(f"✅ Predictions saved to: {save_path}")
+            self.logger.info(f"Predictions saved to: {save_path}")
             return str(save_path)
 
         except Exception as e:
@@ -598,7 +594,7 @@ class ModelPredictor:
             with open(report_file, "w") as f:
                 json.dump(converted_report, f, indent=2, default=str)
 
-            self.logger.info(f"📋 Inference report written to: {report_file}")
+            self.logger.info(f" Inference report written to: {report_file}")
 
         except Exception as e:
             self.logger.error(f"Failed to write inference report: {str(e)}")
