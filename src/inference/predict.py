@@ -241,8 +241,11 @@ class ModelPredictor:
                 if "readmitted" in X_processed.columns:
                     X_processed = X_processed.drop(columns=["readmitted"])
 
+            # Convert to numpy array to avoid feature name warnings
+            X_array = X_processed.values if isinstance(X_processed, pd.DataFrame) else X_processed
+
             # Make predictions
-            predictions = self.model.predict(X_processed)
+            predictions = self.model.predict(X_array)
 
             self.logger.info("Predictions completed successfully")
             self.logger.info(
@@ -291,8 +294,11 @@ class ModelPredictor:
                 if "readmitted" in X_processed.columns:
                     X_processed = X_processed.drop(columns=["readmitted"])
 
+            # Convert to numpy array to avoid feature name warnings
+            X_array = X_processed.values if isinstance(X_processed, pd.DataFrame) else X_processed
+
             # Get probabilities
-            probabilities = self.model.predict_proba(X_processed)
+            probabilities = self.model.predict_proba(X_array)
 
             self.logger.info("Prediction probabilities calculated successfully")
 
