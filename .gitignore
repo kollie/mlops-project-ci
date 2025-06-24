@@ -53,3 +53,5 @@ data/**/*.json
 !notebooks/Final_Basic_Solution_Python.ipynb
 
 .coverage
+
+.env
