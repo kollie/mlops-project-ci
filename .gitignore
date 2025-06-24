@@ -53,3 +53,26 @@ data/**/*.json
 !notebooks/Final_Basic_Solution_Python.ipynb
 
 .coverage
+
+# Ignorar outputs y artefactos temporales
+outputs/
+mlruns/
+logs/
+*.log
+*.joblib
+*.pkl
+
+# Ignorar datos procesados y predicciones
+/data/processed/
+/data/predictions/
+
+# Ignorar checkpoints de notebooks
+.ipynb_checkpoints/
+
+# Ignorar cachés de Python
+__pycache__/
+*.pyc
+
+# Ignorar archivos temporales de sistema
+.DS_Store
+Thumbs.db

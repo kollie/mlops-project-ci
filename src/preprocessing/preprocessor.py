@@ -206,7 +206,7 @@ class Preprocessor:
                 remainder="drop",  # Drop any columns not specified
             )
 
-            self.logger.info("✅ Preprocessing pipeline created successfully")
+            self.logger.info("Preprocessing pipeline created successfully")
             return preprocessor
 
         except Exception as e:
@@ -295,7 +295,7 @@ class Preprocessor:
             ]
 
             self.logger.info(
-                f"✅ Selected {len(selected_features)} features from {X.shape[1]} total"
+                f"Selected {len(selected_features)} features from {X.shape[1]} total"
             )
             self.logger.info(f"Selected features: {selected_features}")
 
@@ -421,7 +421,7 @@ class Preprocessor:
             # Apply feature selection
             X_processed = self._select_features(X_processed, y_encoded)
 
-            self.logger.info("✅ Preprocessing pipeline fitted successfully")
+            self.logger.info("Preprocessing pipeline fitted successfully")
             self.logger.info(f"   Final feature count: {X_processed.shape[1]}")
 
             # Update report
@@ -526,7 +526,7 @@ class Preprocessor:
             else:
                 y_encoded = y
 
-            self.logger.info("✅ Data transformed successfully")
+            self.logger.info("Data transformed successfully")
             self.logger.info(f"   Features shape: {X_df.shape}")
             self.logger.info(f"   Target shape: {y_encoded.shape}")
 

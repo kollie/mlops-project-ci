@@ -110,7 +110,7 @@ class ModelEvaluator:
                 mlflow.set_tracking_uri(tracking_uri)
                 mlflow.set_experiment(experiment_name)
 
-                self.logger.info(f"✅ MLflow tracking setup: {tracking_uri}")
+                self.logger.info(f"MLflow tracking setup: {tracking_uri}")
                 return True
             else:
                 self.logger.info("MLflow tracking disabled in config")
@@ -345,7 +345,7 @@ class ModelEvaluator:
             self._write_report()
 
             # Log results
-            self.logger.info("✅ Model evaluation completed successfully!")
+            self.logger.info("Model evaluation completed successfully!")
             self.logger.info(f"Evaluation results for {dataset_name}:")
             for metric, value in self.metrics.items():
                 self.logger.info(f"  {metric}: {value:.4f}")
@@ -430,7 +430,7 @@ class ModelEvaluator:
             with open(file_path, "w") as f:
                 json.dump(save_data, f, indent=2, default=str)
 
-            self.logger.info(f"✅ Metrics saved to: {file_path}")
+            self.logger.info(f"Metrics saved to: {file_path}")
             return file_path
 
         except Exception as e:
@@ -530,7 +530,7 @@ class ModelEvaluator:
             with open(report_file, "w") as f:
                 json.dump(report_converted, f, indent=2, default=str)
 
-            self.logger.info(f"📋 Evaluation report written to: {report_file}")
+            self.logger.info(f"Evaluation report written to: {report_file}")
 
         except Exception as e:
             self.logger.error(f"Failed to write evaluation report: {str(e)}")

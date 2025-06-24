@@ -142,7 +142,7 @@ class EDAAnalyzer:
             if numeric_cols:
                 description["numeric_summary"] = data[numeric_cols].describe().to_dict()
 
-            self.logger.info("✅ Dataset description completed")
+            self.logger.info("Dataset description completed")
             return description
 
         except Exception as e:
@@ -184,7 +184,7 @@ class EDAAnalyzer:
             # Create target distribution plots
             self._plot_target_distribution(data, target_col)
 
-            self.logger.info("✅ Target variable analysis completed")
+            self.logger.info("Target variable analysis completed")
             return analysis
 
         except Exception as e:
@@ -280,7 +280,7 @@ class EDAAnalyzer:
                 )
                 plt.close(fig)
 
-            self.logger.info("✅ Feature distribution analysis completed")
+            self.logger.info("Feature distribution analysis completed")
             return distribution_stats
 
         except Exception as e:
@@ -362,7 +362,7 @@ class EDAAnalyzer:
                 "high_correlations": self._find_high_correlations(correlation_matrix),
             }
 
-            self.logger.info("✅ Correlation analysis completed")
+            self.logger.info("Correlation analysis completed")
             return analysis
 
         except Exception as e:
@@ -419,7 +419,7 @@ class EDAAnalyzer:
                 )
                 plt.close(fig)
 
-            self.logger.info("✅ Missing values analysis completed")
+            self.logger.info("Missing values analysis completed")
             return analysis
 
         except Exception as e:
@@ -479,7 +479,7 @@ class EDAAnalyzer:
             # Write report
             self._write_report()
 
-            self.logger.info("✅ Comprehensive EDA analysis completed successfully!")
+            self.logger.info("Comprehensive EDA analysis completed successfully!")
             return self.report
 
         except Exception as e:

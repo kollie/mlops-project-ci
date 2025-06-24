@@ -1,0 +1,13 @@
+name: validation
+
+conda_env: conda.yml
+
+entry_points:
+  main:
+    parameters:
+      config_path: {type: str, default: "src/config.yaml"}
+      data_path: {type: str}
+      run_name: {type: str, default: "validation_run"}
+      clean: {type: bool, default: False}
+    command: >
+      python run.py --config_path {config_path} --data_path {data_path} --run_name {run_name} {clean}

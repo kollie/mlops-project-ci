@@ -123,7 +123,7 @@ class FeatureEngineer:
             # Drop temporary column
             data = data.drop(columns=["age_numeric"])
 
-            self.logger.info("✅ Created age_group feature")
+            self.logger.info("Created age_group feature")
             return data
 
         except Exception as e:
@@ -147,7 +147,7 @@ class FeatureEngineer:
                 include_lowest=True,
             )
 
-            self.logger.info("✅ Created los_group feature")
+            self.logger.info("Created los_group feature")
             return data
 
         except Exception as e:
@@ -173,7 +173,7 @@ class FeatureEngineer:
             data = data.copy()
             data["total_visits"] = data[visit_columns].sum(axis=1)
 
-            self.logger.info("✅ Created total_visits feature")
+            self.logger.info("Created total_visits feature")
             return data
 
         except Exception as e:
@@ -198,7 +198,7 @@ class FeatureEngineer:
                 data["time_in_hospital"].replace(0, 1)
             )
 
-            self.logger.info("✅ Created medication_intensity feature")
+            self.logger.info("Created medication_intensity feature")
             return data
 
         except Exception as e:
@@ -239,7 +239,7 @@ class FeatureEngineer:
                 created_flags.append("uses_diabetes_med")
 
             if created_flags:
-                self.logger.info(f"✅ Created binary flags: {created_flags}")
+                self.logger.info(f"Created binary flags: {created_flags}")
 
             return data
 
@@ -306,7 +306,7 @@ class FeatureEngineer:
                 created_features.append("has_circulatory_diagnosis")
 
             if created_features:
-                self.logger.info(f"✅ Created diagnosis features: {created_features}")
+                self.logger.info(f"Created diagnosis features: {created_features}")
 
             return data
 
@@ -431,7 +431,7 @@ class FeatureEngineer:
                     self.logger.info(f"Encoded categorical column '{col}' to integer")
 
             self.logger.info(
-                f"✅ Categorical encoding completed. Final shape: {X_encoded.shape}"
+                f"Categorical encoding completed. Final shape: {X_encoded.shape}"
             )
             return X_encoded
 
@@ -517,7 +517,7 @@ class FeatureEngineer:
             )
 
             self.logger.info(
-                f"✅ Selected {len(self.selected_features)} features from {X.shape[1]} total"
+                f"Selected {len(self.selected_features)} features from {X.shape[1]} total"
             )
             self.logger.info(f"Selected features: {self.selected_features}")
 
@@ -610,7 +610,7 @@ class FeatureEngineer:
             # Write report
             self._write_report()
 
-            self.logger.info("✅ Feature engineering completed successfully!")
+            self.logger.info("Feature engineering completed successfully!")
             self.logger.info(f"Final feature shape: {X_selected.shape}")
 
             return X_selected, y
@@ -672,7 +672,7 @@ class FeatureEngineer:
                 X_selected = X
 
             self.logger.info(
-                f"✅ Data transformed successfully. Shape: {X_selected.shape}"
+                f"Data transformed successfully. Shape: {X_selected.shape}"
             )
 
             return X_selected, y
