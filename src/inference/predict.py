@@ -24,7 +24,7 @@ class ModelPredictor:
     patterns as other modules in the pipeline.
     """
 
-    def __init__(self, config_path: str = "src/config.yaml", model_path: str = None):
+    def __init__(self, config_path: str = "conf/config.yaml", model_path: str = None):
         self.config_path = config_path
         self.config = self._load_config(config_path)
         self.logger = self._setup_logging()

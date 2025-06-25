@@ -36,7 +36,7 @@ def setup_logging():
 
 
 def run_load_data(config, data_source=None):
-    data_loader = DataLoader(config_path="src/config.yaml")
+    data_loader = DataLoader(config_path="conf/config.yaml")
     df = data_loader.load_data(file_path=data_source)
     train, val, test = data_loader.split_data(df)
     data_loader.save_split_data(train, val, test)
@@ -44,19 +44,19 @@ def run_load_data(config, data_source=None):
 
 
 def run_validate_data(config, df):
-    validator = DataValidator(config_path="src/config.yaml")
+    validator = DataValidator(config_path="conf/config.yaml")
     clean_data = validator.validate_and_clean(df, strategy="drop_columns")
     return clean_data
 
 
 def run_eda(config, clean_data):
-    eda_analyzer = EDAAnalyzer(config_path="src/config.yaml")
+    eda_analyzer = EDAAnalyzer(config_path="conf/config.yaml")
     eda_report = eda_analyzer.run_full_analysis(clean_data)
     return eda_report
 
 
 def run_preprocessing(config, train, val, test):
-    preprocessor = Preprocessor(config_path="src/config.yaml")
+    preprocessor = Preprocessor(config_path="conf/config.yaml")
     X_train, y_train = preprocessor.fit_transform(train)
     X_val, y_val = preprocessor.transform(val)
     X_test, y_test = preprocessor.transform(test)
@@ -67,7 +67,7 @@ def run_preprocessing(config, train, val, test):
 def run_feature_engineering(
     config, X_train, y_train, X_val, y_val, X_test, y_test
 ):
-    engineer = FeatureEngineer(config_path="src/config.yaml")
+    engineer = FeatureEngineer(config_path="conf/config.yaml")
     X_train_eng, y_train = engineer.fit_transform(
         pd.concat([X_train, y_train], axis=1), target_col="readmitted"
     )
@@ -81,7 +81,7 @@ def run_feature_engineering(
 
 
 def run_train(config, X_train_eng, y_train, engineer):
-    trainer = ModelTrainer(config_path="src/config.yaml")
+    trainer = ModelTrainer(config_path="conf/config.yaml")
     trainer.fit(X_train_eng, y_train)
     trainer.set_feature_engineer(engineer)
     model_path = trainer.save()
@@ -89,24 +89,28 @@ def run_train(config, X_train_eng, y_train, engineer):
 
 
 def run_evaluate(config, trainer, X_test_eng, y_test):
-    evaluator = ModelEvaluator(config_path="src/config.yaml")
+    evaluator = ModelEvaluator(config_path="conf/config.yaml")
     predictions = trainer.predict(X_test_eng)
     probabilities = trainer.predict_proba(X_test_eng)
-    evaluation_results = evaluator.evaluate(
+    evaluator.evaluate(
         y_true=y_test,
         y_pred=predictions,
         y_pred_proba=probabilities,
         dataset_name="test",
     )
     test_metrics = evaluator.get_metrics()
-    trainer.log_evaluation_metrics(test_metrics)
-    trainer.log_feature_importance(list(X_test_eng.columns))
+    
+    # Log metrics to W&B if trainer is available
+    if trainer is not None:
+        trainer.log_evaluation_metrics(test_metrics)
+        trainer.log_feature_importance(list(X_test_eng.columns))
+    
     metrics_path = evaluator.save_metrics()
     return evaluator, test_metrics, metrics_path
 
 
 def run_inference(config, model_path, X_test_eng):
-    predictor = ModelPredictor(config_path="src/config.yaml")
+    predictor = ModelPredictor(config_path="conf/config.yaml")
     predictor.load_model(model_path)
     test_sample = X_test_eng.head(10).reset_index(drop=True)
     inference_predictions = predictor.predict(test_sample, preprocess=False)
@@ -162,7 +166,7 @@ def main(data_source: str = None):
     logger.info("🚀 Starting MLOps pipeline...")
 
     # Load steps from config.yaml
-    with open("src/config.yaml", "r") as f:
+    with open("conf/config.yaml", "r") as f:
         config = yaml.safe_load(f)
     steps_to_run = config.get("main", {}).get("steps", [])
 

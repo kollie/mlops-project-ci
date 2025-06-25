@@ -5,10 +5,10 @@ conda_env: conda.yml
 entry_points:
   main:
     parameters:
-      config_path: {type: str, default: "src/config.yaml"}
-      model_path: {type: str}
-      data_path: {type: str}
-      run_name: {type: str, default: "inference_run"}
-      batch_size: {type: int, default: 1000}
+      config_path: { type: str, default: "conf/config.yaml" }
+      model_path: { type: str }
+      data_path: { type: str }
+      run_name: { type: str, default: "inference_run" }
+      batch_size: { type: int, default: 1000 }
     command: >
       python run.py --config_path {config_path} --model_path {model_path} --data_path {data_path} --run_name {run_name} --batch_size {batch_size}

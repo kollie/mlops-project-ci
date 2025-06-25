@@ -52,7 +52,7 @@ def run_preprocessing(config_path, run_name, log_to_mlflow=True):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_path", type=str, default="src/config.yaml", help="Path to config file")
+    parser.add_argument("--config_path", type=str, default="conf/config.yaml", help="Path to config file")
     parser.add_argument("--run_name", type=str, default="preprocessing_run", help="Name for MLflow run")
     args = parser.parse_args()
     run_preprocessing(args.config_path, args.run_name, log_to_mlflow=True)

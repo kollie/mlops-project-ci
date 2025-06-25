@@ -21,7 +21,7 @@ class EDAAnalyzer:
     missing values analysis, and target analysis.
     """
 
-    def __init__(self, config_path: str = "src/config.yaml"):
+    def __init__(self, config_path: str = "conf/config.yaml"):
         self.config_path = config_path
         self.config = self._load_config(config_path)
         self.logger = self._setup_logging()

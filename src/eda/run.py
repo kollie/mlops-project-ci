@@ -57,7 +57,7 @@ def run_eda(config_path, run_name, log_to_mlflow=True):
 if __name__ == "__main__":
     # Parse CLI arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_path", type=str, default="src/config.yaml", help="Path to config file")
+    parser.add_argument("--config_path", type=str, default="conf/config.yaml", help="Path to config file")
     parser.add_argument("--run_name", type=str, default="eda_run", help="Name for MLflow run")
     args = parser.parse_args()
     run_eda(args.config_path, args.run_name, log_to_mlflow=True)

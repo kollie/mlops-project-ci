@@ -57,7 +57,7 @@ def run_validation(config_path, data_path, run_name, clean=False, log_to_mlflow=
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_path", type=str, default="src/config.yaml", help="Path to config file")
+    parser.add_argument("--config_path", type=str, default="conf/config.yaml", help="Path to config file")
     parser.add_argument("--data_path", type=str, required=True, help="Path to data file to validate")
     parser.add_argument("--run_name", type=str, default="validation_run", help="Name for MLflow run")
     parser.add_argument("--clean", action="store_true", help="Whether to clean data after validation")

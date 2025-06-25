@@ -363,7 +363,7 @@ async def predict_sample():
     
     try:
         # Load the predictor
-        predictor = ModelPredictor(config_path="src/config.yaml")
+        predictor = ModelPredictor(config_path="conf/config.yaml")
         predictor.load_model(model_path)
         
         # Get a sample from the test data for prediction

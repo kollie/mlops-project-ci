@@ -1,0 +1,78 @@
+program: src/main.py
+method: bayes # Bayesian optimization for efficient hyperparameter search
+metric:
+  name: evaluation/f1_score # Matches the logging prefix in trainer.py
+  goal: maximize
+
+# Early termination to save resources
+early_terminate:
+  type: hyperband
+  min_iter: 10
+
+# Parameters to sweep over
+parameters:
+  # Model type selection (if you want to test different models)
+  model.active:
+    values: ["random_forest"] # Focus on Random Forest for now
+
+  # Random Forest hyperparameters
+  model.random_forest.n_estimators:
+    min: 50
+    max: 500
+    distribution: int_uniform
+
+  model.random_forest.max_depth:
+    min: 3
+    max: 20
+    distribution: int_uniform
+
+  model.random_forest.min_samples_split:
+    min: 2
+    max: 20
+    distribution: int_uniform
+
+  model.random_forest.min_samples_leaf:
+    min: 1
+    max: 10
+    distribution: int_uniform
+
+  model.random_forest.max_features:
+    values: ["sqrt", "log2", None]
+
+  model.random_forest.criterion:
+    values: ["gini", "entropy"]
+
+  model.random_forest.bootstrap:
+    values: [true, false]
+
+  # Feature selection parameters
+  feature_selection.n_features:
+    min: 10
+    max: 50
+    distribution: int_uniform
+
+  feature_selection.correlation_threshold:
+    min: 0.05
+    max: 0.3
+    distribution: uniform
+
+  # Feature engineering parameters
+  feature_engineering.n_features_to_select:
+    min: 10
+    max: 50
+    distribution: int_uniform
+
+  # Global random state (for reproducibility)
+  model.random_state:
+    values: [42, 123, 456, 789, 2024]
+
+  # Training parameters
+  training.cv_folds:
+    values: [3, 5, 10]
+
+  # Preprocessing parameters
+  preprocessing.scaling.method:
+    values: ["standard", "minmax", "robust"]
+
+  preprocessing.encoding.categorical:
+    values: ["onehot", "label", "target"]

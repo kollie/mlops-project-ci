@@ -54,7 +54,7 @@ def run_inference(config_path, model_path, data_path, run_name, batch_size=1000,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_path", type=str, default="src/config.yaml", help="Path to config file")
+    parser.add_argument("--config_path", type=str, default="conf/config.yaml", help="Path to config file")
     parser.add_argument("--model_path", type=str, required=True, help="Path to trained model file")
     parser.add_argument("--data_path", type=str, required=True, help="Path to input data for inference")
     parser.add_argument("--run_name", type=str, default="inference_run", help="Name for MLflow run")

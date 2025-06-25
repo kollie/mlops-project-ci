@@ -22,7 +22,6 @@ data:
   y_pred_path: data/predictions/y_pred.csv
   y_pred_proba_path: data/predictions/y_pred_proba.csv
 
-
 # Model parameters
 model:
   # Which model we intend to run by default
@@ -103,9 +102,9 @@ features:
     - 28
     - 30
   government_payer_codes:
-    - MC   
-    - MD   
-    - CM   
+    - MC
+    - MD
+    - CM
   high_risk_specialties:
     - InternalMedicine
     - Cardiology
@@ -116,10 +115,10 @@ features:
     - CriticalCare
     - InfectiousDiseases
   critical_admission_sources:
-    - 1   
-    - 2   
-    - 6   
-    - 17  
+    - 1
+    - 2
+    - 6
+    - 17
   categorical_features:
     - race
     - gender
@@ -220,8 +219,8 @@ evaluation:
 
 # Weights & Biases Configuration
 wandb:
-  project: "hospital-readmission-prediction"
-  entity: null  # Set to your username or team name
+  project: "ml_ops_project"
+  entity: cameron-bell-ie
   experiment_name: "mlops_pipeline_v1"
   enabled: true
   tags:

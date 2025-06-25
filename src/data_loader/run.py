@@ -44,7 +44,7 @@ def run_data_loader(config_path, run_name, log_to_mlflow=True):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_path", type=str, required=True)
+    parser.add_argument("--config_path", type=str, default="conf/config.yaml", help="Path to config file")
     parser.add_argument("--run_name", type=str, required=True)
     args = parser.parse_args()
     run_data_loader(args.config_path, args.run_name, log_to_mlflow=True)

@@ -6,7 +6,7 @@ import seaborn as sns
 from typing import Dict, Any
 
 
-def setup_logging(config_path: str = "src/config.yaml") -> logging.Logger:
+def setup_logging(config_path: str = "conf/config.yaml") -> logging.Logger:
     """Set up logging configuration."""
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
@@ -26,7 +26,7 @@ def setup_logging(config_path: str = "src/config.yaml") -> logging.Logger:
     return logging.getLogger(__name__)
 
 
-def load_config(config_path: str = "src/config.yaml") -> Dict[str, Any]:
+def load_config(config_path: str = "conf/config.yaml") -> Dict[str, Any]:
     """Load configuration from YAML file."""
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
