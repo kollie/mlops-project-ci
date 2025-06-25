@@ -16,6 +16,17 @@ This project demonstrates a production-ready MLOps pipeline for hospital readmis
 - **Error Handling**: Robust error management and recovery
 - **Clean Output**: Resolved all model-related warnings
 
+## 🏷️ Baseline Checkpoint
+
+The initial baseline for this project is tagged as [`v0.1.0-notebook-to-mlops`](https://github.com/kollie/mlops-project-ci/releases/tag/v0.1.0-notebook-to-mlops).
+This tag marks the transition from the original notebook to a reproducible MLOps pipeline.
+
+To revert to this baseline at any time:
+
+```bash
+git checkout v0.1.0-notebook-to-mlops
+```
+
 ## 🏗️ Architecture
 
 ```
