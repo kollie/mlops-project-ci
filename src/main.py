@@ -4,6 +4,11 @@ import os
 import pandas as pd
 from pathlib import Path
 import yaml
+import wandb
+import matplotlib.pyplot as plt
+import seaborn as sns
+import io
+from sklearn.metrics import confusion_matrix, roc_curve, precision_recall_curve, classification_report, log_loss
 
 # Add project root to path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -166,6 +171,16 @@ def main(data_source: str = None):
         config = yaml.safe_load(f)
     steps_to_run = config.get("main", {}).get("steps", [])
 
+    # --- INICIALIZAR W&B ---
+    wandb_run = wandb.init(
+        project=config.get("wandb", {}).get("project", "hospital-readmission-prediction"),
+        entity=config.get("wandb", {}).get("entity"),
+        name=config.get("wandb", {}).get("experiment_name", "mlops_pipeline_v1"),
+        config=config,
+        tags=["mlops", "full-pipeline"],
+        notes="Tracking the full pipeline run"
+    )
+
     try:
         # Step 1: Load and split data
         if "load_data" in steps_to_run:
@@ -174,6 +189,13 @@ def main(data_source: str = None):
             logger.info(
                 f"✅ Data loaded and split - Train: {train.shape}, Val: {val.shape}, Test: {test.shape}"
             )
+            # Log data shapes
+            wandb.log({
+                "data/train_rows": train.shape[0],
+                "data/val_rows": val.shape[0],
+                "data/test_rows": test.shape[0],
+                "data/columns": train.shape[1] if train is not None else 0
+            })
         else:
             df = train = val = test = None
 
@@ -184,6 +206,7 @@ def main(data_source: str = None):
             logger.info(
                 f"✅ Data validation completed - Clean data shape: {clean_data.shape}"
             )
+            wandb.log({"data/clean_rows": clean_data.shape[0]})
         else:
             clean_data = df
 
@@ -192,21 +215,15 @@ def main(data_source: str = None):
             logger.info("Step 3: Performing Exploratory Data Analysis...")
             eda_report = run_eda(config, clean_data)
             logger.info(f"✅ EDA completed - Report sections: {list(eda_report.keys())}")
-
             # Log key EDA insights
             if "summary" in eda_report:
                 summary = eda_report["summary"]
-                logger.info("📊 EDA Summary:")
-                logger.info(f"   Total features: {summary.get('total_features', 'N/A')}")
-                logger.info(
-                    f"   Numeric features: {summary.get('numeric_features', 'N/A')}"
-                )
-                logger.info(
-                    f"   Categorical features: {summary.get('categorical_features', 'N/A')}"
-                )
-                logger.info(
-                    f"   Missing data: {summary.get('missing_data_percentage', 'N/A')}%"
-                )
+                wandb.log({
+                    "eda/total_features": summary.get('total_features', 0),
+                    "eda/numeric_features": summary.get('numeric_features', 0),
+                    "eda/categorical_features": summary.get('categorical_features', 0),
+                    "eda/missing_data_pct": summary.get('missing_data_percentage', 0)
+                })
 
             if (
                 "target_analysis" in eda_report
@@ -229,6 +246,10 @@ def main(data_source: str = None):
             logger.info("Step 4: Preprocessing data...")
             X_train, y_train, X_val, y_val, X_test, y_test = run_preprocessing(config, train, val, test)
             logger.info(f"✅ Data preprocessed - Training shape: {X_train.shape}")
+            wandb.log({
+                "preprocessing/train_samples": X_train.shape[0],
+                "preprocessing/features": X_train.shape[1]
+            })
         else:
             X_train = y_train = X_val = y_val = X_test = y_test = None
 
@@ -239,6 +260,9 @@ def main(data_source: str = None):
             logger.info(
                 f"✅ Feature engineering completed - Final shape: {X_train_eng.shape}"
             )
+            wandb.log({
+                "feature_engineering/features": X_train_eng.shape[1]
+            })
         else:
             X_train_eng = X_val_eng = X_test_eng = None
 
@@ -247,6 +271,20 @@ def main(data_source: str = None):
             logger.info("Step 6: Training model...")
             trainer, model_path = run_train(config, X_train_eng, y_train, engineer)
             logger.info(f"✅ Model trained and saved to: {model_path}")
+            # --- ENTRENAR SOLO UNA VEZ Y LOGGEAR MÉTRICAS FINALES ---
+            y_pred_train = trainer.model.predict(X_train_eng)
+            acc = (y_pred_train == y_train).mean()
+            try:
+                loss = log_loss(y_train, trainer.model.predict_proba(X_train_eng))
+            except Exception:
+                loss = None
+            wandb.log({"train/loss": loss, "train/accuracy": acc})
+            # --- FEATURE IMPORTANCE TABLA ---
+            if hasattr(trainer.model, "feature_importances_"):
+                importance = trainer.model.feature_importances_
+                feature_names = trainer.feature_names_ if hasattr(trainer, "feature_names_") else list(range(len(importance)))
+                fi_df = pd.DataFrame({"feature": feature_names, "importance": importance})
+                wandb.log({"feature_importance_table": wandb.Table(dataframe=fi_df)})
         else:
             trainer = model_path = None
 
@@ -257,7 +295,23 @@ def main(data_source: str = None):
             logger.info("📈 Test Results:")
             for metric, value in test_metrics.items():
                 logger.info(f"   {metric}: {value:.4f}")
+                wandb.log({f"evaluation/{metric}": value})
             logger.info(f"✅ Evaluation completed - Metrics saved to: {metrics_path}")
+            # --- CONFUSION MATRIX TABLA ---
+            predictions = trainer.predict(X_test_eng)
+            probabilities = trainer.predict_proba(X_test_eng)
+            cm = confusion_matrix(y_test, predictions)
+            cm_df = pd.DataFrame(cm)
+            wandb.log({"confusion_matrix_table": wandb.Table(dataframe=cm_df)})
+            # --- CLASSIFICATION REPORT ---
+            report_dict = classification_report(y_test, predictions, output_dict=True)
+            report_df = pd.DataFrame(report_dict).transpose()
+            wandb.log({"classification_report": wandb.Table(dataframe=report_df)})
+            # --- INFERENCE SAMPLES ---
+            sample_df = X_test_eng.head(10).copy()
+            sample_df["true"] = y_test.head(10).values
+            sample_df["pred"] = predictions[:10]
+            wandb.log({"inference_samples": wandb.Table(dataframe=sample_df)})
         else:
             evaluator = test_metrics = metrics_path = None
 
@@ -268,6 +322,11 @@ def main(data_source: str = None):
             logger.info(
                 f"✅ Basic inference completed - {len(inference_predictions)} predictions made"
             )
+            wandb.log({
+                "inference/num_predictions": len(inference_predictions),
+                "inference/high_confidence": confidence_results.get('high_confidence_count', 0),
+                "inference/mean_confidence": confidence_results.get('confidence_stats', {}).get('mean_confidence', 0)
+            })
             logger.info("📊 Confidence Analysis:")
             logger.info(
                 f"   High confidence predictions: {confidence_results['high_confidence_count']}/{len(inference_predictions)}"
@@ -294,11 +353,13 @@ def main(data_source: str = None):
                     logger.info(
                         f"   Improvement in F1-score: {comparison['differences']['f1_score']:.4f}"
                     )
+                    wandb.log({"compare/improvement_f1": comparison['differences']['f1_score']})
                 else:
                     logger.info("⚠️  Current model performs worse than baseline.")
                     logger.info(
                         f"   Decrease in F1-score: {comparison['differences']['f1_score']:.4f}"
                     )
+                    wandb.log({"compare/decrease_f1": comparison['differences']['f1_score']})
             except Exception as e:
                 logger.warning(f"Model comparison skipped: {str(e)}")
 
@@ -315,8 +376,12 @@ def main(data_source: str = None):
         logger.info("   Inference results: data/processed/inference_results.json")
         logger.info("=" * 60)
 
-        # Finish wandb run
-        trainer.finish_wandb()
+        # --- FINALIZAR W&B ---
+        wandb.finish()
+
+        # Finish wandb run en trainer (por si acaso)
+        if trainer is not None:
+            trainer.finish_wandb()
 
         return {
             "data_shapes": {
@@ -334,11 +399,11 @@ def main(data_source: str = None):
     except Exception as e:
         logger.error(f"❌ Pipeline failed: {str(e)}")
         logger.error("Check the logs above for detailed error information.")
-        
+        # --- FINALIZAR W&B EN CASO DE ERROR ---
+        wandb.finish()
         # Ensure wandb run is finished even on failure
-        if 'trainer' in locals():
+        if 'trainer' in locals() and trainer is not None:
             trainer.finish_wandb()
-        
         raise
 
 

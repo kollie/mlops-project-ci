@@ -1,0 +1,31 @@
+{
+  "os":  "Windows-10-10.0.26100-SP0",
+  "python":  "CPython 3.8.20",
+  "startedAt":  "2025-06-25T18:51:46.313950Z",
+  "program":  "src/main.py",
+  "codePath":  "src\\main.py",
+  "git":  {
+    "remote":  "https://github.com/kollie/mlops-project-ci.git",
+    "commit":  "906326e891feb5b527a46c7f07fc65efd63156c5"
+  },
+  "email":  "juliovarelalj@student.ie.edu",
+  "root":  "C:\\Users\\Julio\\Desktop\\Mlops review\\mlops-project-ci",
+  "host":  "LAPTOP-13Q5EHTI",
+  "executable":  "C:\\Users\\Julio\\miniconda3\\envs\\mlops\\python.exe",
+  "codePathLocal":  "src\\main.py",
+  "cpu_count":  10,
+  "cpu_count_logical":  12,
+  "disk":  {
+    "/":  {
+      "total":  "510854688768",
+      "used":  "350085890048"
+    }
+  },
+  "memory":  {
+    "total":  "16803217408"
+  },
+  "cpu":  {
+    "count":  10,
+    "countLogical":  12
+  }
+}
